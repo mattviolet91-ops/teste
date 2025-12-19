@@ -3,34 +3,22 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Les Restos de Matt</title>
+    <title>Les Restos de Matt - Cloud & AI</title>
     
-    <!-- Scripts avec fallback et chargement ordonné -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
 
-    <script type="importmap">
-      {
-        "imports": {
-          "firebase/app": "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js",
-          "firebase/auth": "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js",
-          "firebase/firestore": "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js"
-        }
-      }
-    </script>
+    <!-- Firebase SDK Compat -->
+    <script src="https://www.gstatic.com/firebasejs/11.0.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/11.0.2/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore-compat.js"></script>
 
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
         
-        :root {
-            --safe-top: env(safe-area-inset-top, 20px);
-            --safe-bottom: env(safe-area-inset-bottom, 20px);
-            --matt-blue: #1D4ED8;
-        }
-
         body {
             font-family: 'Inter', sans-serif;
             background: #000;
@@ -53,7 +41,7 @@
             box-shadow: 0 0 20px rgba(29, 78, 216, 0.2);
         }
 
-        .fade-in { animation: fadeIn 0.5s ease-out forwards; }
+        .fade-in { animation: fadeIn 0.4s ease-out forwards; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
         .no-scrollbar::-webkit-scrollbar { display: none; }
@@ -62,31 +50,20 @@
 <body>
     <div id="root"></div>
 
-    <script type="module">
-        import { initializeApp } from "firebase/app";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "firebase/auth";
-        import { getFirestore, collection, addDoc, onSnapshot, query, doc, deleteDoc } from "firebase/firestore";
-
-        // Expose to window for Babel script
-        window.FirebaseSDK = { initializeApp, getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, getFirestore, collection, addDoc, onSnapshot, query, doc, deleteDoc };
-    </script>
-
     <script type="text/babel">
         const { useState, useEffect, useRef } = React;
-        const { initializeApp, getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, getFirestore, collection, addDoc, onSnapshot, query, doc, deleteDoc } = window.FirebaseSDK;
 
-        const apiKey = ""; 
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'restos-matt-app';
+        // Configuration Globale
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'restos-matt-default';
         const firebaseConfig = JSON.parse(window.__firebase_config || '{}');
+        const apiKey = ""; // Géré par l'environnement
 
-        // Initialisation sécurisée
+        // Initialisation Firebase
         let db, auth;
-        try {
-            const app = initializeApp(firebaseConfig);
-            auth = getAuth(app);
-            db = getFirestore(app);
-        } catch (e) {
-            console.error("Firebase Init Error", e);
+        if (firebaseConfig.apiKey) {
+            if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+            db = firebase.firestore();
+            auth = firebase.auth();
         }
 
         const LucideIcon = ({ name, size = 24, className = "" }) => {
@@ -106,179 +83,310 @@
 
         const App = () => {
             const [user, setUser] = useState(null);
-            const [view, setView] = useState('list'); 
+            const [view, setView] = useState('list'); // 'list' or 'search'
             const [restaurants, setRestaurants] = useState([]);
             const [publicRestos, setPublicRestos] = useState([]);
-            const [recommendations, setRecommendations] = useState([]);
+            const [searchQuery, setSearchQuery] = useState('');
+            const [searchResults, setSearchResults] = useState([]);
             const [isAdding, setIsAdding] = useState(false);
-            const [loadingRecs, setLoadingRecs] = useState(false);
+            const [isSyncing, setIsSyncing] = useState(false);
+            const [magicMode, setMagicMode] = useState(false);
+            const [isAnalyzing, setIsAnalyzing] = useState(false);
 
-            // Auth logic
+            // 1. Authentification
             useEffect(() => {
-                const startAuth = async () => {
+                if (!auth) return;
+                const initAuth = async () => {
                     try {
                         if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                            await signInWithCustomToken(auth, __initial_auth_token);
+                            await auth.signInWithCustomToken(__initial_auth_token);
                         } else {
-                            await signInAnonymously(auth);
+                            await auth.signInAnonymously();
                         }
-                    } catch (err) { console.error("Auth failed", err); }
+                    } catch (err) {
+                        console.error("Auth error:", err);
+                    }
                 };
-                startAuth();
-                return onAuthStateChanged(auth, setUser);
+                initAuth();
+                const unsubscribe = auth.onAuthStateChanged(u => setUser(u));
+                return () => unsubscribe();
             }, []);
 
-            // Real-time data
+            // 2. Écoute Firestore
             useEffect(() => {
                 if (!user || !db) return;
 
-                const qPrivate = query(collection(db, 'artifacts', appId, 'users', user.uid, 'restaurants'));
-                const unsub1 = onSnapshot(qPrivate, (s) => setRestaurants(s.docs.map(d => ({id: d.id, ...d.data(), type: 'private'}))), (e) => console.log(e));
+                setIsSyncing(true);
 
-                const qPublic = query(collection(db, 'artifacts', appId, 'public', 'data', 'restaurants'));
-                const unsub2 = onSnapshot(qPublic, (s) => setPublicRestos(s.docs.map(d => ({id: d.id, ...d.data(), type: 'public'}))), (e) => console.log(e));
+                const unsubPrivate = db.collection('artifacts').doc(appId)
+                    .collection('users').doc(user.uid).collection('restaurants')
+                    .onSnapshot(snapshot => {
+                        const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                        setRestaurants(data);
+                        setIsSyncing(false);
+                    }, err => console.error("Private fetch error:", err));
 
-                return () => { unsub1(); unsub2(); };
+                const unsubPublic = db.collection('artifacts').doc(appId)
+                    .collection('public').doc('data').collection('restaurants')
+                    .onSnapshot(snapshot => {
+                        const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                        setPublicRestos(data);
+                    }, err => console.error("Public fetch error:", err));
+
+                return () => { unsubPrivate(); unsubPublic(); };
             }, [user]);
 
-            const fetchAIRecommendations = async () => {
-                if (restaurants.length === 0 && publicRestos.length === 0) return;
-                setLoadingRecs(true);
-                const list = [...restaurants, ...publicRestos].map(r => r.name).join(', ');
-                
+            // 3. IA : Saisie Magique & Recherche Google (via Gemini)
+            const handleMagicAnalyze = async (text) => {
+                if (!text || text.length < 5) return;
+                setIsAnalyzing(true);
                 try {
-                    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`, {
+                    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`, {
                         method: 'POST',
-                        headers: {'Content-Type': 'application/json'},
+                        headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
-                            contents: [{ parts: [{ text: `Basé sur ces restaurants à Paris: ${list}, suggère 3 nouveaux restos. Répond uniquement en JSON: {"recos": [{"name": "Nom", "cuisine": "Style", "desc": "Pourquoi?"}]}` }] }],
+                            contents: [{ parts: [{ text: `Analyse cette note de restaurant: "${text}". Réponds UNIQUEMENT avec ce JSON: {"name": "Nom", "cuisine": "Cuisine"}.` }] }],
                             generationConfig: { responseMimeType: "application/json" }
                         })
                     });
-                    const data = await res.json();
-                    const parsed = JSON.parse(data.candidates[0].content.parts[0].text);
-                    setRecommendations(parsed.recos);
-                } catch (e) {
-                    console.error("AI Error", e);
+                    const data = await response.json();
+                    const result = JSON.parse(data.candidates?.[0]?.content?.parts?.[0]?.text);
+                    if (result) {
+                        // Pré-remplir le formulaire ou ajouter directement
+                        saveToCloud(result.name, result.cuisine, true);
+                        setMagicMode(false);
+                    }
+                } catch (err) {
+                    console.error("IA Analysis error:", err);
                 } finally {
-                    setLoadingRecs(false);
+                    setIsAnalyzing(false);
                 }
             };
 
-            useEffect(() => {
-                if (view === 'ai' && recommendations.length === 0) fetchAIRecommendations();
-            }, [view]);
+            const searchPlaces = async (query) => {
+                if (query.length < 3) return;
+                setIsAnalyzing(true);
+                try {
+                    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            contents: [{ parts: [{ text: `Trouve 3 restaurants réels correspondant à "${query}". Réponds UNIQUEMENT avec un JSON: [{"name": "string", "cuisine": "string"}].` }] }],
+                            generationConfig: { responseMimeType: "application/json" }
+                        })
+                    });
+                    const data = await response.json();
+                    const results = JSON.parse(data.candidates?.[0]?.content?.parts?.[0]?.text);
+                    setSearchResults(results || []);
+                } catch (err) {
+                    console.error("Search error:", err);
+                } finally {
+                    setIsAnalyzing(false);
+                }
+            };
 
-            const handleSubmit = async (e) => {
-                e.preventDefault();
-                const fd = new FormData(e.target);
-                const data = {
-                    name: fd.get('name'),
-                    cuisine: fd.get('cuisine'),
-                    note: fd.get('note'),
-                    userId: user.uid,
-                    timestamp: Date.now()
+            const saveToCloud = async (name, cuisine, isPrivate) => {
+                if (!user || !db) return;
+                const newResto = {
+                    name,
+                    cuisine: cuisine || 'Non précisé',
+                    creator: user.uid,
+                    createdAt: Date.now()
                 };
-                const isPrivate = fd.get('privacy') === 'on';
-                const colPath = isPrivate 
-                    ? collection(db, 'artifacts', appId, 'users', user.uid, 'restaurants')
-                    : collection(db, 'artifacts', appId, 'public', 'data', 'restaurants');
-                
-                await addDoc(colPath, data);
-                setIsAdding(false);
+                try {
+                    const colRef = isPrivate
+                        ? db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('restaurants')
+                        : db.collection('artifacts').doc(appId).collection('public').doc('data').collection('restaurants');
+                    await colRef.add(newResto);
+                    setIsAdding(false);
+                    setSearchResults([]);
+                    setSearchQuery('');
+                } catch (err) {
+                    console.error("Save error:", err);
+                }
+            };
+
+            const deleteResto = async (id, type) => {
+                if (!db || !user) return;
+                try {
+                    const docPath = type === 'private'
+                        ? db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('restaurants').doc(id)
+                        : db.collection('artifacts').doc(appId).collection('public').doc('data').collection('restaurants').doc(id);
+                    await docPath.delete();
+                } catch (err) {
+                    console.error("Delete error:", err);
+                }
             };
 
             return (
                 <div className="flex flex-col h-screen max-w-md mx-auto bg-black relative overflow-hidden">
-                    {/* Background Aura */}
-                    <div className="absolute top-[-10%] left-[-10%] w-[120%] h-[40%] bg-blue-900/20 blur-[100px] pointer-events-none"></div>
+                    <div className="absolute top-[-10%] left-[-10%] w-[120%] h-[40%] bg-blue-900/10 blur-[120px] pointer-events-none"></div>
 
                     <header className="px-6 pt-12 pb-6 flex justify-between items-center relative z-10">
-                        <h1 className="text-2xl font-black italic tracking-tighter uppercase leading-none">
-                            <span className="text-blue-600">Restos</span><br/>de Matt
-                        </h1>
-                        <button onClick={() => setIsAdding(true)} className="w-12 h-12 glass rounded-2xl flex items-center justify-center text-blue-500 active:scale-90 transition-transform">
-                            <LucideIcon name="plus" size={24} />
-                        </button>
+                        <div>
+                            <h1 className="text-2xl font-black italic tracking-tighter uppercase leading-none text-white">
+                                <span className="text-blue-600">Restos</span><br/>de Matt
+                            </h1>
+                            {isSyncing && <span className="text-[8px] font-bold text-blue-500 uppercase animate-pulse tracking-widest">En ligne</span>}
+                        </div>
+                        <div className="flex gap-2">
+                            <button onClick={() => setView(view === 'list' ? 'search' : 'list')} className="w-10 h-10 glass rounded-xl flex items-center justify-center text-white/50">
+                                <LucideIcon name={view === 'list' ? "search" : "list"} size={18} />
+                            </button>
+                            <button onClick={() => setIsAdding(true)} className="w-10 h-10 glass rounded-xl flex items-center justify-center text-blue-500">
+                                <LucideIcon name="plus" size={20} />
+                            </button>
+                        </div>
                     </header>
 
-                    <main className="flex-1 overflow-y-auto no-scrollbar px-6 pb-32">
-                        {view === 'list' ? (
-                            <div className="fade-in space-y-8">
-                                <section>
-                                    <h2 className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/30 mb-4">Mes Adresses</h2>
-                                    <div className="space-y-3">
-                                        {restaurants.map(r => (
-                                            <div key={r.id} className="glass rounded-3xl p-5 border-l-4 border-blue-600/50">
-                                                <h3 className="font-bold text-lg">{r.name}</h3>
-                                                <p className="text-xs text-white/40 uppercase tracking-widest">{r.cuisine}</p>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </section>
-
-                                <section>
-                                    <h2 className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/30 mb-4">Partagés</h2>
-                                    <div className="space-y-3">
-                                        {publicRestos.map(r => (
-                                            <div key={r.id} className="glass rounded-3xl p-5 border-l-4 border-white/10">
-                                                <h3 className="font-bold text-lg">{r.name}</h3>
-                                                <p className="text-xs text-white/40 uppercase tracking-widest">{r.cuisine}</p>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </section>
-                            </div>
-                        ) : (
-                            <div className="fade-in space-y-6">
-                                <div className="mb-6">
-                                    <h2 className="text-2xl font-black italic">Conseils IA</h2>
-                                    <p className="text-xs text-white/40">Basé sur tes préférences actuelles</p>
+                    {view === 'search' && (
+                        <div className="px-6 pb-4 fade-in">
+                            <div className="relative">
+                                <input 
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    onKeyDown={(e) => e.key === 'Enter' && searchPlaces(searchQuery)}
+                                    placeholder="Rechercher un lieu..."
+                                    className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 pl-12 outline-none focus:border-blue-500 text-white transition-all text-sm"
+                                />
+                                <div className="absolute left-4 top-4 text-white/20">
+                                    {isAnalyzing ? <LucideIcon name="loader-2" size={18} className="animate-spin" /> : <LucideIcon name="search" size={18} />}
                                 </div>
-                                {loadingRecs ? (
-                                    <div className="flex justify-center py-20 animate-pulse text-blue-500">
-                                        <LucideIcon name="sparkles" className="animate-spin" />
-                                    </div>
-                                ) : (
-                                    recommendations.map((rec, i) => (
-                                        <div key={i} className="glass p-6 rounded-[2.5rem] border border-blue-500/20">
-                                            <h3 className="text-xl font-bold mb-1 text-blue-400">{rec.name}</h3>
-                                            <p className="text-[10px] font-bold uppercase text-white/30 mb-4">{rec.cuisine}</p>
-                                            <p className="text-sm opacity-70 leading-relaxed italic">"{rec.desc}"</p>
-                                        </div>
-                                    ))
-                                )}
                             </div>
-                        )}
+                        </div>
+                    )}
+
+                    <main className="flex-1 overflow-y-auto no-scrollbar px-6 pb-32">
+                        <div className="fade-in space-y-8">
+                            {view === 'search' && searchResults.length > 0 && (
+                                <section>
+                                    <h2 className="text-[10px] font-bold uppercase tracking-[0.2em] text-blue-400 mb-4">Résultats Google</h2>
+                                    <div className="space-y-3">
+                                        {searchResults.map((r, i) => (
+                                            <div key={i} className="glass rounded-3xl p-5 border-white/10 flex justify-between items-center">
+                                                <div>
+                                                    <h3 className="font-bold text-white">{r.name}</h3>
+                                                    <p className="text-[10px] text-white/40 uppercase">{r.cuisine}</p>
+                                                </div>
+                                                <button onClick={() => saveToCloud(r.name, r.cuisine, false)} className="p-3 bg-blue-600 rounded-2xl text-white">
+                                                    <LucideIcon name="plus" size={16} />
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </section>
+                            )}
+
+                            {view === 'list' && (
+                                <>
+                                    <section>
+                                        <div className="flex items-center justify-between mb-4">
+                                            <h2 className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/30">Privé</h2>
+                                            <span className="text-[10px] text-white/20 bg-white/5 px-2 py-0.5 rounded-full">{restaurants.length}</span>
+                                        </div>
+                                        <div className="space-y-3">
+                                            {restaurants.map(r => (
+                                                <div key={r.id} className="group glass rounded-3xl p-5 border-l-4 border-blue-600/50 flex justify-between items-center">
+                                                    <div>
+                                                        <h3 className="font-bold text-white">{r.name}</h3>
+                                                        <p className="text-[10px] text-white/40 uppercase tracking-widest">{r.cuisine}</p>
+                                                    </div>
+                                                    <button onClick={() => deleteResto(r.id, 'private')} className="p-2 text-white/20 hover:text-red-500 transition-all">
+                                                        <LucideIcon name="trash-2" size={16} />
+                                                    </button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </section>
+
+                                    <section>
+                                        <div className="flex items-center justify-between mb-4">
+                                            <h2 className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/30">Communauté</h2>
+                                            <span className="text-[10px] text-white/20 bg-white/5 px-2 py-0.5 rounded-full">{publicRestos.length}</span>
+                                        </div>
+                                        <div className="space-y-3">
+                                            {publicRestos.map(r => (
+                                                <div key={r.id} className="group glass rounded-3xl p-5 border-white/10 flex justify-between items-center">
+                                                    <div>
+                                                        <h3 className="font-bold text-white">{r.name}</h3>
+                                                        <p className="text-[10px] text-white/40 uppercase tracking-widest">{r.cuisine}</p>
+                                                    </div>
+                                                    {r.creator === user?.uid && (
+                                                        <button onClick={() => deleteResto(r.id, 'public')} className="p-2 text-white/20 hover:text-red-500 transition-all">
+                                                            <LucideIcon name="trash-2" size={16} />
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </section>
+                                </>
+                            )}
+                        </div>
                     </main>
 
-                    {/* Bottom Nav */}
-                    <nav className="fixed bottom-8 left-8 right-8 h-20 glass rounded-[2.5rem] flex items-center justify-around px-2 z-50 max-w-md mx-auto">
-                        <button onClick={() => setView('list')} className={`flex-1 flex flex-col items-center gap-1 p-4 rounded-3xl transition-all ${view === 'list' ? 'active-tab' : 'opacity-40'}`}>
-                            <LucideIcon name="list" size={20} />
-                            <span className="text-[8px] font-bold uppercase">Ma Liste</span>
+                    {/* Navigation Cloud */}
+                    <nav className="fixed bottom-8 left-8 right-8 h-20 glass rounded-[2.5rem] flex items-center justify-around px-2 z-50 max-w-md mx-auto shadow-2xl">
+                        <button onClick={() => setView('list')} className={`flex-1 flex flex-col items-center gap-1 p-4 rounded-3xl transition-all ${view === 'list' ? 'active-tab' : 'opacity-30'}`}>
+                            <LucideIcon name="database" size={20} />
+                            <span className="text-[8px] font-bold uppercase tracking-tighter">Carnet</span>
                         </button>
-                        <button onClick={() => setView('ai')} className={`flex-1 flex flex-col items-center gap-1 p-4 rounded-3xl transition-all ${view === 'ai' ? 'active-tab' : 'opacity-40'}`}>
-                            <LucideIcon name="sparkles" size={20} />
-                            <span className="text-[8px] font-bold uppercase">Conseils</span>
+                        <button onClick={() => setMagicMode(true)} className="w-14 h-14 bg-white text-black rounded-full flex items-center justify-center shadow-[0_0_30px_rgba(255,255,255,0.3)] active:scale-90 transition-all">
+                            <LucideIcon name="sparkles" size={24} />
+                        </button>
+                        <button onClick={() => setView('search')} className={`flex-1 flex flex-col items-center gap-1 p-4 rounded-3xl transition-all ${view === 'search' ? 'active-tab' : 'opacity-30'}`}>
+                            <LucideIcon name="search" size={20} />
+                            <span className="text-[8px] font-bold uppercase tracking-tighter">Découvrir</span>
                         </button>
                     </nav>
 
-                    {/* Add Drawer */}
+                    {/* Modal Saisie Magique (IA) */}
+                    {magicMode && (
+                        <div className="fixed inset-0 z-[110] flex items-center justify-center p-6">
+                            <div className="absolute inset-0 bg-black/95 backdrop-blur-xl" onClick={() => setMagicMode(false)}></div>
+                            <div className="relative w-full max-w-sm glass rounded-[3rem] p-8 border border-white/10 fade-in">
+                                <div className="flex justify-between items-center mb-6">
+                                    <h3 className="text-xl font-black italic uppercase text-white">Saisie Magique</h3>
+                                    <button onClick={() => setMagicMode(false)} className="text-white/20"><LucideIcon name="x" size={24} /></button>
+                                </div>
+                                <textarea 
+                                    className="w-full h-40 bg-white/5 border border-white/10 rounded-3xl p-5 text-sm outline-none focus:border-blue-500 transition-all mb-6 placeholder:text-white/10"
+                                    placeholder="Colle une recommandation ici... ex: J'ai adoré 'Le Petit Chalet', c'est de la cuisine savoyarde incroyable !"
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                ></textarea>
+                                <button 
+                                    onClick={() => handleMagicAnalyze(searchQuery)}
+                                    disabled={isAnalyzing}
+                                    className="w-full py-5 bg-white text-black rounded-3xl font-black uppercase text-[10px] tracking-[0.2em] flex items-center justify-center gap-2"
+                                >
+                                    {isAnalyzing ? <LucideIcon name="loader-2" size={18} className="animate-spin" /> : <LucideIcon name="sparkles" size={18} />}
+                                    Analyser avec l'IA
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Modal Ajout Manuel */}
                     {isAdding && (
                         <div className="fixed inset-0 z-[100] flex items-end">
-                            <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setIsAdding(false)}></div>
-                            <form onSubmit={handleSubmit} className="relative w-full glass rounded-t-[3rem] p-8 border-t border-white/20 fade-in">
+                            <div className="absolute inset-0 bg-black/90 backdrop-blur-md" onClick={() => setIsAdding(false)}></div>
+                            <form onSubmit={(e) => {
+                                e.preventDefault();
+                                const fd = new FormData(e.target);
+                                saveToCloud(fd.get('name'), fd.get('cuisine'), fd.get('privacy') === 'on');
+                            }} className="relative w-full glass rounded-t-[3rem] p-8 border-t border-white/20 fade-in shadow-[0_-20px_50px_rgba(0,0,0,0.5)]">
                                 <div className="w-12 h-1 bg-white/20 rounded-full mx-auto mb-8"></div>
-                                <h3 className="text-2xl font-black mb-6 italic">Nouveau Resto</h3>
+                                <h3 className="text-2xl font-black mb-6 italic text-white uppercase tracking-tighter">Nouveau Lieu</h3>
                                 <div className="space-y-4">
-                                    <input name="name" required placeholder="Nom du restaurant" className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 outline-none focus:border-blue-500" />
-                                    <input name="cuisine" placeholder="Cuisine (ex: Japonais)" className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 outline-none focus:border-blue-500" />
-                                    <div className="flex items-center justify-between glass p-4 rounded-2xl">
-                                        <span className="text-sm font-bold">Privé ?</span>
-                                        <input type="checkbox" name="privacy" defaultChecked className="w-5 h-5 accent-blue-600" />
+                                    <input name="name" required placeholder="Nom du resto" className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-white" />
+                                    <input name="cuisine" placeholder="Type de cuisine" className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-white" />
+                                    <div className="flex items-center justify-between glass p-4 rounded-2xl border border-white/5">
+                                        <span className="text-xs font-bold text-white/50">Mode Privé</span>
+                                        <input type="checkbox" name="privacy" defaultChecked className="w-6 h-6 accent-blue-600" />
                                     </div>
-                                    <button type="submit" className="w-full py-4 bg-blue-600 rounded-2xl font-black uppercase tracking-widest text-xs shadow-lg active:scale-95 transition-all">Ajouter</button>
+                                    <button type="submit" className="w-full py-5 bg-blue-600 rounded-3xl font-black uppercase text-[10px] tracking-widest text-white">
+                                        Enregistrer
+                                    </button>
                                 </div>
                             </form>
                         </div>
