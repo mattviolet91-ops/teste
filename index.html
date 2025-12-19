@@ -1,349 +1,294 @@
-import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { Search, MapPin, Star, Plus, Heart, CheckCircle, X, ChefHat, Navigation, Trash2, Apple, Check, ChevronRight, Loader2, Globe, Sparkles, AlertCircle, Save, Wand2, List, FolderPlus } from 'lucide-react';
-
-// --- CONFIGURATION ---
-const apiKey = ""; 
-
-// --- COMPOSANTS LIQUID UI ---
-
-const GlassCard = ({ children, className = "", onClick }) => (
-  <div 
-    onClick={onClick}
-    className={`relative backdrop-blur-2xl bg-white/10 border border-white/20 shadow-[0_8px_32px_0_rgba(31,38,135,0.37)] ${className}`}
-    style={{ borderRadius: '24px' }}
-  >
-    {children}
-  </div>
-);
-
-const LiquidButton = ({ icon: Icon, active, onClick, label }) => (
-  <button 
-    onClick={onClick}
-    className={`flex flex-col items-center gap-1 transition-all duration-500 group ${active ? 'scale-110' : 'scale-100 opacity-50 hover:opacity-100'}`}
-  >
-    <div className={`p-3 rounded-full transition-all duration-500 ${active ? 'bg-white/20 shadow-[0_0_20px_rgba(255,255,255,0.3)]' : 'bg-transparent'}`}>
-        <Icon size={24} className={active ? 'text-white' : 'text-zinc-400'} />
-    </div>
-    {label && <span className="text-[10px] font-bold tracking-widest uppercase">{label}</span>}
-  </button>
-);
-
-const InteractiveStars = ({ rating, onRate, size = 16, disabled = false }) => (
-  <div className={`flex gap-1 ${disabled ? 'opacity-20' : ''}`}>
-    {[1, 2, 3, 4, 5].map((star) => (
-      <button 
-        key={star} 
-        disabled={disabled}
-        onClick={(e) => { 
-          if (disabled) return;
-          e.stopPropagation(); 
-          onRate && onRate(star); 
-        }}
-        className={`${!disabled ? 'cursor-pointer hover:scale-125 transition-transform' : 'cursor-not-allowed'}`}
-      >
-        <Star 
-          size={size} 
-          className={`${star <= rating ? 'fill-yellow-400 text-yellow-400 drop-shadow-[0_0_10px_rgba(250,204,21,0.5)]' : 'text-white/20'}`} 
-        />
-      </button>
-    ))}
-  </div>
-);
-
-// --- MAIN APP ---
-export default function ParisDiningApp() {
-  const [restaurants, setRestaurants] = useState([
-    {
-      id: 1,
-      name: "Girafe",
-      address: "1 Place du Trocadéro, 75016 Paris",
-      cuisine: "Fruits de mer",
-      price: "€€€€",
-      rating: 5,
-      status: "visited",
-      image: "https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?auto=format&fit=crop&w=800&q=80",
-      note: "Vue imprenable sur la Tour Eiffel. Le plateau de fruits de mer est exceptionnel.",
-      lists: ["Favoris"]
-    },
-    {
-      id: 2,
-      name: "Septime",
-      address: "80 Rue de Charonne, 75011 Paris",
-      cuisine: "Gastronomique",
-      price: "€€€",
-      rating: 4,
-      status: "visited",
-      image: "https://images.unsplash.com/photo-1559339352-11d035aa65de?auto=format&fit=crop&w=800&q=80",
-      note: "Cuisine moderne et raffinée. Pensez à réserver très en avance.",
-      lists: ["Favoris"]
-    }
-  ]);
-  
-  const [userLists, setUserLists] = useState(["Favoris", "À tester d'urgence", "Dîner Business"]);
-  const [activeTab, setActiveTab] = useState('list');
-  const [selectedStatus, setSelectedStatus] = useState('all');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [recommendations, setRecommendations] = useState([]);
-  const [isSearching, setIsSearching] = useState(false);
-  
-  // Modals
-  const [showAddResto, setShowAddResto] = useState(false);
-  const [showAddList, setShowAddList] = useState(false);
-  const [newListTitle, setNewListTitle] = useState("");
-  const [newResto, setNewResto] = useState({ name: '', cuisine: '', status: 'wishlist' });
-
-  // IA - Recommandations basées sur les goûts
-  const generateRecommendations = async () => {
-    setIsSearching(true);
-    const favorites = restaurants.map(r => r.cuisine).join(', ');
-    const prompt = `Basé sur ces goûts: ${favorites}, suggère 3 restaurants parisiens célèbres. Réponds en JSON: [{"name": "Nom", "reason": "Pourquoi ?", "cuisine": "Type"}]`;
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Les Restos de Matt</title>
     
-    try {
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                contents: [{ parts: [{ text: prompt }] }],
-                generationConfig: { responseMimeType: "application/json" }
-            })
-        });
-        const data = await response.json();
-        const results = JSON.parse(data.candidates?.[0]?.content?.parts?.[0]?.text);
-        setRecommendations(results);
-    } catch (err) {
-        console.error("Erreur Recos:", err);
-    } finally {
-        setIsSearching(false);
-    }
-  };
+    <!-- Scripts avec fallback et chargement ordonné -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
 
-  const filteredRestaurants = useMemo(() => {
-    return restaurants.filter(r => {
-        const matchesStatus = selectedStatus === 'all' || r.status === selectedStatus;
-        const matchesSearch = r.name?.toLowerCase().includes(searchQuery?.toLowerCase() || "");
-        return matchesStatus && matchesSearch;
-    });
-  }, [restaurants, selectedStatus, searchQuery]);
+    <script type="importmap">
+      {
+        "imports": {
+          "firebase/app": "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js",
+          "firebase/auth": "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js",
+          "firebase/firestore": "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js"
+        }
+      }
+    </script>
 
-  const addRestaurant = () => {
-    if (!newResto.name) return;
-    const item = {
-        ...newResto,
-        id: Date.now(),
-        image: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=800&q=80",
-        rating: 0,
-        lists: []
-    };
-    setRestaurants([item, ...restaurants]);
-    setNewResto({ name: '', cuisine: '', status: 'wishlist' });
-    setShowAddResto(false);
-  };
-
-  const createList = () => {
-    if (!newListTitle) return;
-    setUserLists([...userLists, newListTitle]);
-    setNewListTitle("");
-    setShowAddList(false);
-  };
-
-  const customStyles = `
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap');
-    body { font-family: 'Inter', sans-serif; background: black; margin: 0; padding: 0; overflow: hidden; }
-    .no-scrollbar::-webkit-scrollbar { display: none; }
-    .glass { background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.1); }
-  `;
-
-  return (
-    <div className="relative w-full h-screen overflow-hidden bg-black text-white font-sans selection:bg-white/20">
-      <style dangerouslySetInnerHTML={{ __html: customStyles }} />
-      
-      {/* Background - Liquid Mesh */}
-      <div className="absolute inset-0 pointer-events-none overflow-hidden">
-          <div className="absolute top-[-20%] left-[-10%] w-[80%] h-[70%] bg-blue-600/30 blur-[150px] animate-pulse rounded-full" />
-          <div className="absolute bottom-[-10%] right-[-10%] w-[60%] h-[60%] bg-indigo-900/40 blur-[150px] rounded-full" />
-      </div>
-
-      <div className="relative z-10 flex flex-col h-full max-w-md mx-auto">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
         
-        <header className="pt-16 pb-6 px-8 flex justify-between items-start">
-            <div>
-                <h1 className="text-3xl font-black italic tracking-tighter uppercase drop-shadow-lg text-white">
-                    Les Restos de Matt’s
-                </h1>
-                <p className="text-[10px] font-bold text-white/30 uppercase tracking-[0.3em] mt-1">Édition Paris Premium</p>
-            </div>
-            <div className="flex gap-2">
-                <button 
-                    onClick={generateRecommendations}
-                    className="p-3 bg-white/10 backdrop-blur-xl rounded-full border border-white/20 text-blue-400 active:scale-90 transition-all"
-                >
-                    <Wand2 size={20} className={isSearching ? "animate-spin" : ""} />
-                </button>
-                <button 
-                    onClick={() => setShowAddResto(true)}
-                    className="p-3 bg-white text-black rounded-full shadow-lg active:scale-90 transition-all"
-                >
-                    <Plus size={20} />
-                </button>
-            </div>
-        </header>
+        :root {
+            --safe-top: env(safe-area-inset-top, 20px);
+            --safe-bottom: env(safe-area-inset-bottom, 20px);
+            --matt-blue: #1D4ED8;
+        }
 
-        {activeTab === 'list' && (
-            <div className="px-8 mb-6">
-                <div className="relative">
-                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30" size={18} />
-                    <input 
-                        type="text" 
-                        placeholder="Filtrer mes adresses..."
-                        className="w-full bg-white/5 border border-white/10 rounded-2xl py-3.5 pl-12 pr-12 text-xs font-medium focus:outline-none focus:bg-white/10 transition-all"
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                    />
-                </div>
-            </div>
-        )}
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #000;
+            color: #fff;
+            margin: 0;
+            overflow: hidden;
+            height: 100vh;
+        }
 
-        <div className={`flex-1 overflow-y-auto px-6 pb-32 no-scrollbar space-y-8`}>
-            
-            {activeTab === 'list' && (
-                <>
-                    {recommendations.length > 0 && (
-                        <section className="animate-in fade-in slide-in-from-top-4 duration-700">
-                            <div className="flex items-center gap-2 mb-4">
-                                <Sparkles size={14} className="text-yellow-400" />
-                                <h2 className="text-[10px] font-black uppercase tracking-widest text-yellow-400">Suggestions pour Matt</h2>
-                            </div>
-                            <div className="flex gap-4 overflow-x-auto no-scrollbar pb-2">
-                                {recommendations.map((rec, i) => (
-                                    <div key={i} className="min-w-[240px] glass p-5 rounded-[2rem] border-yellow-500/20">
-                                        <h3 className="font-bold text-sm text-white">{rec.name}</h3>
-                                        <p className="text-[10px] text-white/40 mb-3 italic">"{rec.reason}"</p>
-                                        <button className="text-[10px] font-black text-yellow-500 uppercase tracking-widest flex items-center gap-1">
-                                            Détails <ChevronRight size={10} />
-                                        </button>
-                                    </div>
-                                ))}
-                            </div>
-                        </section>
-                    )}
+        .glass {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
 
-                    <section className="space-y-4">
-                        <div className="flex justify-between items-center mb-2">
-                            <h2 className="text-[10px] font-black uppercase tracking-widest text-white/30">Mon Carnet</h2>
-                            <div className="flex gap-2">
-                                {['all', 'wishlist', 'visited'].map(s => (
-                                    <button 
-                                        key={s}
-                                        onClick={() => setSelectedStatus(s)}
-                                        className={`text-[9px] font-bold px-3 py-1 rounded-full transition-all ${selectedStatus === s ? 'bg-white text-black' : 'text-white/40 bg-white/5'}`}
-                                    >
-                                        {s === 'all' ? 'TOUS' : s === 'wishlist' ? 'À TESTER' : 'FAIT'}
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
+        .active-tab {
+            color: #fff !important;
+            background: rgba(29, 78, 216, 0.3);
+            box-shadow: 0 0 20px rgba(29, 78, 216, 0.2);
+        }
 
-                        {filteredRestaurants.map(resto => (
-                            <GlassCard key={resto.id} className="flex h-28 overflow-hidden active:scale-95 transition-all group cursor-pointer">
-                                <img src={resto.image} className="w-28 h-full object-cover shrink-0" alt={resto.name} />
-                                <div className="flex-1 p-4 flex flex-col justify-between">
-                                    <div className="flex justify-between items-start">
-                                        <h3 className="font-bold text-white text-sm">{resto.name}</h3>
-                                        {resto.status === 'visited' ? <CheckCircle size={14} className="text-emerald-400" /> : <Heart size={14} className="text-rose-400" />}
-                                    </div>
-                                    <div className="flex justify-between items-end">
-                                        <p className="text-[9px] text-white/40 font-black uppercase tracking-widest">{resto.cuisine}</p>
-                                        <InteractiveStars rating={resto.rating || 0} disabled size={10} />
-                                    </div>
-                                </div>
-                            </GlassCard>
-                        ))}
-                    </section>
-                </>
-            )}
+        .fade-in { animation: fadeIn 0.5s ease-out forwards; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
-            {activeTab === 'folders' && (
-                <section className="space-y-6 animate-in fade-in duration-500">
-                    <div className="flex justify-between items-center">
-                        <h2 className="text-[10px] font-black uppercase tracking-widest text-white/30">Mes Collections</h2>
-                        <button onClick={() => setShowAddList(true)} className="flex items-center gap-2 text-[10px] font-bold text-blue-400 uppercase">
-                            <FolderPlus size={14} /> Nouvelle Liste
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="module">
+        import { initializeApp } from "firebase/app";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "firebase/auth";
+        import { getFirestore, collection, addDoc, onSnapshot, query, doc, deleteDoc } from "firebase/firestore";
+
+        // Expose to window for Babel script
+        window.FirebaseSDK = { initializeApp, getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, getFirestore, collection, addDoc, onSnapshot, query, doc, deleteDoc };
+    </script>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+        const { initializeApp, getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, getFirestore, collection, addDoc, onSnapshot, query, doc, deleteDoc } = window.FirebaseSDK;
+
+        const apiKey = ""; 
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'restos-matt-app';
+        const firebaseConfig = JSON.parse(window.__firebase_config || '{}');
+
+        // Initialisation sécurisée
+        let db, auth;
+        try {
+            const app = initializeApp(firebaseConfig);
+            auth = getAuth(app);
+            db = getFirestore(app);
+        } catch (e) {
+            console.error("Firebase Init Error", e);
+        }
+
+        const LucideIcon = ({ name, size = 24, className = "" }) => {
+            const iconRef = useRef(null);
+            useEffect(() => {
+                if (window.lucide && iconRef.current) {
+                    iconRef.current.innerHTML = '';
+                    const icon = document.createElement('i');
+                    icon.setAttribute('data-lucide', name);
+                    icon.className = className;
+                    iconRef.current.appendChild(icon);
+                    window.lucide.createIcons();
+                }
+            }, [name, className]);
+            return <span ref={iconRef} style={{ width: size, height: size, display: 'inline-flex' }}></span>;
+        };
+
+        const App = () => {
+            const [user, setUser] = useState(null);
+            const [view, setView] = useState('list'); 
+            const [restaurants, setRestaurants] = useState([]);
+            const [publicRestos, setPublicRestos] = useState([]);
+            const [recommendations, setRecommendations] = useState([]);
+            const [isAdding, setIsAdding] = useState(false);
+            const [loadingRecs, setLoadingRecs] = useState(false);
+
+            // Auth logic
+            useEffect(() => {
+                const startAuth = async () => {
+                    try {
+                        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                            await signInWithCustomToken(auth, __initial_auth_token);
+                        } else {
+                            await signInAnonymously(auth);
+                        }
+                    } catch (err) { console.error("Auth failed", err); }
+                };
+                startAuth();
+                return onAuthStateChanged(auth, setUser);
+            }, []);
+
+            // Real-time data
+            useEffect(() => {
+                if (!user || !db) return;
+
+                const qPrivate = query(collection(db, 'artifacts', appId, 'users', user.uid, 'restaurants'));
+                const unsub1 = onSnapshot(qPrivate, (s) => setRestaurants(s.docs.map(d => ({id: d.id, ...d.data(), type: 'private'}))), (e) => console.log(e));
+
+                const qPublic = query(collection(db, 'artifacts', appId, 'public', 'data', 'restaurants'));
+                const unsub2 = onSnapshot(qPublic, (s) => setPublicRestos(s.docs.map(d => ({id: d.id, ...d.data(), type: 'public'}))), (e) => console.log(e));
+
+                return () => { unsub1(); unsub2(); };
+            }, [user]);
+
+            const fetchAIRecommendations = async () => {
+                if (restaurants.length === 0 && publicRestos.length === 0) return;
+                setLoadingRecs(true);
+                const list = [...restaurants, ...publicRestos].map(r => r.name).join(', ');
+                
+                try {
+                    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`, {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({
+                            contents: [{ parts: [{ text: `Basé sur ces restaurants à Paris: ${list}, suggère 3 nouveaux restos. Répond uniquement en JSON: {"recos": [{"name": "Nom", "cuisine": "Style", "desc": "Pourquoi?"}]}` }] }],
+                            generationConfig: { responseMimeType: "application/json" }
+                        })
+                    });
+                    const data = await res.json();
+                    const parsed = JSON.parse(data.candidates[0].content.parts[0].text);
+                    setRecommendations(parsed.recos);
+                } catch (e) {
+                    console.error("AI Error", e);
+                } finally {
+                    setLoadingRecs(false);
+                }
+            };
+
+            useEffect(() => {
+                if (view === 'ai' && recommendations.length === 0) fetchAIRecommendations();
+            }, [view]);
+
+            const handleSubmit = async (e) => {
+                e.preventDefault();
+                const fd = new FormData(e.target);
+                const data = {
+                    name: fd.get('name'),
+                    cuisine: fd.get('cuisine'),
+                    note: fd.get('note'),
+                    userId: user.uid,
+                    timestamp: Date.now()
+                };
+                const isPrivate = fd.get('privacy') === 'on';
+                const colPath = isPrivate 
+                    ? collection(db, 'artifacts', appId, 'users', user.uid, 'restaurants')
+                    : collection(db, 'artifacts', appId, 'public', 'data', 'restaurants');
+                
+                await addDoc(colPath, data);
+                setIsAdding(false);
+            };
+
+            return (
+                <div className="flex flex-col h-screen max-w-md mx-auto bg-black relative overflow-hidden">
+                    {/* Background Aura */}
+                    <div className="absolute top-[-10%] left-[-10%] w-[120%] h-[40%] bg-blue-900/20 blur-[100px] pointer-events-none"></div>
+
+                    <header className="px-6 pt-12 pb-6 flex justify-between items-center relative z-10">
+                        <h1 className="text-2xl font-black italic tracking-tighter uppercase leading-none">
+                            <span className="text-blue-600">Restos</span><br/>de Matt
+                        </h1>
+                        <button onClick={() => setIsAdding(true)} className="w-12 h-12 glass rounded-2xl flex items-center justify-center text-blue-500 active:scale-90 transition-transform">
+                            <LucideIcon name="plus" size={24} />
                         </button>
-                    </div>
+                    </header>
 
-                    <div className="grid grid-cols-2 gap-4">
-                        {userLists.map((listName, idx) => (
-                            <GlassCard key={idx} className="aspect-square p-6 flex flex-col justify-between group active:scale-95 transition-all">
-                                <div className="w-10 h-10 rounded-2xl bg-white/10 flex items-center justify-center text-white/40 group-hover:text-blue-400 transition-colors">
-                                    <List size={20} />
+                    <main className="flex-1 overflow-y-auto no-scrollbar px-6 pb-32">
+                        {view === 'list' ? (
+                            <div className="fade-in space-y-8">
+                                <section>
+                                    <h2 className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/30 mb-4">Mes Adresses</h2>
+                                    <div className="space-y-3">
+                                        {restaurants.map(r => (
+                                            <div key={r.id} className="glass rounded-3xl p-5 border-l-4 border-blue-600/50">
+                                                <h3 className="font-bold text-lg">{r.name}</h3>
+                                                <p className="text-xs text-white/40 uppercase tracking-widest">{r.cuisine}</p>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </section>
+
+                                <section>
+                                    <h2 className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/30 mb-4">Partagés</h2>
+                                    <div className="space-y-3">
+                                        {publicRestos.map(r => (
+                                            <div key={r.id} className="glass rounded-3xl p-5 border-l-4 border-white/10">
+                                                <h3 className="font-bold text-lg">{r.name}</h3>
+                                                <p className="text-xs text-white/40 uppercase tracking-widest">{r.cuisine}</p>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </section>
+                            </div>
+                        ) : (
+                            <div className="fade-in space-y-6">
+                                <div className="mb-6">
+                                    <h2 className="text-2xl font-black italic">Conseils IA</h2>
+                                    <p className="text-xs text-white/40">Basé sur tes préférences actuelles</p>
                                 </div>
-                                <div>
-                                    <h3 className="font-bold text-sm leading-tight mb-1">{listName}</h3>
-                                    <p className="text-[10px] text-white/30 font-bold uppercase tracking-widest">
-                                        {restaurants.filter(r => r.lists?.includes(listName)).length} Lieux
-                                    </p>
+                                {loadingRecs ? (
+                                    <div className="flex justify-center py-20 animate-pulse text-blue-500">
+                                        <LucideIcon name="sparkles" className="animate-spin" />
+                                    </div>
+                                ) : (
+                                    recommendations.map((rec, i) => (
+                                        <div key={i} className="glass p-6 rounded-[2.5rem] border border-blue-500/20">
+                                            <h3 className="text-xl font-bold mb-1 text-blue-400">{rec.name}</h3>
+                                            <p className="text-[10px] font-bold uppercase text-white/30 mb-4">{rec.cuisine}</p>
+                                            <p className="text-sm opacity-70 leading-relaxed italic">"{rec.desc}"</p>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+                        )}
+                    </main>
+
+                    {/* Bottom Nav */}
+                    <nav className="fixed bottom-8 left-8 right-8 h-20 glass rounded-[2.5rem] flex items-center justify-around px-2 z-50 max-w-md mx-auto">
+                        <button onClick={() => setView('list')} className={`flex-1 flex flex-col items-center gap-1 p-4 rounded-3xl transition-all ${view === 'list' ? 'active-tab' : 'opacity-40'}`}>
+                            <LucideIcon name="list" size={20} />
+                            <span className="text-[8px] font-bold uppercase">Ma Liste</span>
+                        </button>
+                        <button onClick={() => setView('ai')} className={`flex-1 flex flex-col items-center gap-1 p-4 rounded-3xl transition-all ${view === 'ai' ? 'active-tab' : 'opacity-40'}`}>
+                            <LucideIcon name="sparkles" size={20} />
+                            <span className="text-[8px] font-bold uppercase">Conseils</span>
+                        </button>
+                    </nav>
+
+                    {/* Add Drawer */}
+                    {isAdding && (
+                        <div className="fixed inset-0 z-[100] flex items-end">
+                            <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setIsAdding(false)}></div>
+                            <form onSubmit={handleSubmit} className="relative w-full glass rounded-t-[3rem] p-8 border-t border-white/20 fade-in">
+                                <div className="w-12 h-1 bg-white/20 rounded-full mx-auto mb-8"></div>
+                                <h3 className="text-2xl font-black mb-6 italic">Nouveau Resto</h3>
+                                <div className="space-y-4">
+                                    <input name="name" required placeholder="Nom du restaurant" className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 outline-none focus:border-blue-500" />
+                                    <input name="cuisine" placeholder="Cuisine (ex: Japonais)" className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 outline-none focus:border-blue-500" />
+                                    <div className="flex items-center justify-between glass p-4 rounded-2xl">
+                                        <span className="text-sm font-bold">Privé ?</span>
+                                        <input type="checkbox" name="privacy" defaultChecked className="w-5 h-5 accent-blue-600" />
+                                    </div>
+                                    <button type="submit" className="w-full py-4 bg-blue-600 rounded-2xl font-black uppercase tracking-widest text-xs shadow-lg active:scale-95 transition-all">Ajouter</button>
                                 </div>
-                            </GlassCard>
-                        ))}
-                    </div>
-                </section>
-            )}
-        </div>
+                            </form>
+                        </div>
+                    )}
+                </div>
+            );
+        };
 
-        {/* Modals Additionnelles */}
-        {showAddResto && (
-            <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/80 backdrop-blur-sm">
-                <GlassCard className="w-full max-w-xs p-8 space-y-4 animate-in zoom-in-95 duration-200">
-                    <h2 className="text-xl font-black italic uppercase tracking-tighter">Nouveau Resto</h2>
-                    <input 
-                        type="text" 
-                        placeholder="Nom de l'établissement"
-                        className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-sm"
-                        value={newResto.name}
-                        onChange={e => setNewResto({...newResto, name: e.target.value})}
-                    />
-                    <input 
-                        type="text" 
-                        placeholder="Type de cuisine"
-                        className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-sm"
-                        value={newResto.cuisine}
-                        onChange={e => setNewResto({...newResto, cuisine: e.target.value})}
-                    />
-                    <div className="flex gap-2">
-                        <button onClick={addRestaurant} className="flex-1 bg-white text-black py-3 rounded-xl font-bold text-xs uppercase tracking-widest">Ajouter</button>
-                        <button onClick={() => setShowAddResto(false)} className="px-4 bg-white/10 rounded-xl"><X size={18}/></button>
-                    </div>
-                </GlassCard>
-            </div>
-        )}
-
-        {showAddList && (
-            <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/80 backdrop-blur-sm">
-                <GlassCard className="w-full max-w-xs p-8 space-y-4 animate-in zoom-in-95 duration-200">
-                    <h2 className="text-xl font-black italic uppercase tracking-tighter text-blue-400">Nouvelle Collection</h2>
-                    <input 
-                        type="text" 
-                        placeholder="Titre de la liste (ex: Brunchs)"
-                        className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-sm"
-                        value={newListTitle}
-                        onChange={e => setNewListTitle(e.target.value)}
-                        autoFocus
-                    />
-                    <div className="flex gap-2">
-                        <button onClick={createList} className="flex-1 bg-blue-600 text-white py-3 rounded-xl font-bold text-xs uppercase tracking-widest">Créer</button>
-                        <button onClick={() => setShowAddList(false)} className="px-4 bg-white/10 rounded-xl"><X size={18}/></button>
-                    </div>
-                </GlassCard>
-            </div>
-        )}
-
-        {/* Tab Bar Flottante */}
-        <div className="absolute bottom-8 left-6 right-6 h-20 bg-white/5 backdrop-blur-2xl border border-white/10 rounded-[2.5rem] flex items-center justify-around px-6 shadow-[0_-10px_40px_rgba(0,0,0,0.5)]">
-            <LiquidButton icon={ChefHat} active={activeTab === 'list'} onClick={() => setActiveTab('list')} label="CARNET" />
-            <LiquidButton icon={List} active={activeTab === 'folders'} onClick={() => setActiveTab('folders')} label="LISTES" />
-            <LiquidButton icon={MapPin} active={activeTab === 'map'} onClick={() => setActiveTab('map')} label="CARTE" />
-        </div>
-      </div>
-    </div>
-  );
-}
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
