@@ -2,293 +2,409 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Les Restos de Matt</title>
-    
-    <!-- Scripts avec fallback et chargement ordonné -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Les Restos de Matt’s - Paris Premium</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
-
-    <script type="importmap">
-      {
-        "imports": {
-          "firebase/app": "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js",
-          "firebase/auth": "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js",
-          "firebase/firestore": "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js"
-        }
-      }
-    </script>
-
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet">
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
-        
-        :root {
-            --safe-top: env(safe-area-inset-top, 20px);
-            --safe-bottom: env(safe-area-inset-bottom, 20px);
-            --matt-blue: #1D4ED8;
-        }
-
         body {
             font-family: 'Inter', sans-serif;
-            background: #000;
-            color: #fff;
+            background: black;
+            color: white;
             margin: 0;
             overflow: hidden;
-            height: 100vh;
         }
-
-        .glass {
-            background: rgba(255, 255, 255, 0.05);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        .active-tab {
-            color: #fff !important;
-            background: rgba(29, 78, 216, 0.3);
-            box-shadow: 0 0 20px rgba(29, 78, 216, 0.2);
-        }
-
-        .fade-in { animation: fadeIn 0.5s ease-out forwards; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-
         .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        .glass { 
+            background: rgba(255, 255, 255, 0.05); 
+            backdrop-filter: blur(20px); 
+            border: 1px solid rgba(255, 255, 255, 0.1); 
+        }
+        @keyframes fadeIn { 
+            from { opacity: 0; transform: translateY(10px); } 
+            to { opacity: 1; transform: translateY(0); } 
+        }
+        .animate-in { animation: fadeIn 0.5s ease-out forwards; }
+        @keyframes pulse-slow { 
+            0%, 100% { opacity: 0.3; transform: scale(1); } 
+            50% { opacity: 0.4; transform: scale(1.05); } 
+        }
+        .animate-pulse-slow { animation: pulse-slow 8s infinite ease-in-out; }
     </style>
 </head>
 <body>
-    <div id="root"></div>
+    <div id="app" class="relative w-full h-screen overflow-hidden bg-black text-white selection:bg-white/20">
+        <!-- Background - Liquid Mesh -->
+        <div class="absolute inset-0 pointer-events-none overflow-hidden">
+            <div class="absolute top-[-20%] left-[-10%] w-[80%] h-[70%] bg-blue-600/30 blur-[150px] animate-pulse-slow rounded-full"></div>
+            <div class="absolute bottom-[-10%] right-[-10%] w-[60%] h-[60%] bg-indigo-900/40 blur-[150px] rounded-full"></div>
+        </div>
 
-    <script type="module">
-        import { initializeApp } from "firebase/app";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "firebase/auth";
-        import { getFirestore, collection, addDoc, onSnapshot, query, doc, deleteDoc } from "firebase/firestore";
+        <div class="relative z-10 flex flex-col h-full max-w-md mx-auto">
+            <!-- Header -->
+            <header class="pt-12 pb-6 px-8 flex justify-between items-start">
+                <div>
+                    <h1 class="text-3xl font-black italic tracking-tighter uppercase drop-shadow-lg">
+                        Les Restos de Matt’s
+                    </h1>
+                    <p class="text-[10px] font-bold text-white/30 uppercase tracking-[0.3em] mt-1">Édition Paris Premium</p>
+                </div>
+                <div class="flex gap-2">
+                    <button onclick="toggleSettings()" class="p-3 bg-white/10 backdrop-blur-xl rounded-full border border-white/20 text-white active:scale-90 transition-all hover:bg-white/20">
+                        <i data-lucide="settings" class="w-5 h-5"></i>
+                    </button>
+                    <button id="ai-btn" onclick="generateRecommendations()" class="p-3 bg-white/10 backdrop-blur-xl rounded-full border border-white/20 text-blue-400 active:scale-90 transition-all hover:bg-white/20">
+                        <i data-lucide="wand-2" class="w-5 h-5"></i>
+                    </button>
+                    <button onclick="toggleAddResto()" class="p-3 bg-white text-black rounded-full shadow-lg active:scale-90 transition-all hover:bg-gray-200">
+                        <i data-lucide="plus" class="w-5 h-5"></i>
+                    </button>
+                </div>
+            </header>
 
-        // Expose to window for Babel script
-        window.FirebaseSDK = { initializeApp, getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, getFirestore, collection, addDoc, onSnapshot, query, doc, deleteDoc };
-    </script>
+            <!-- Search Bar -->
+            <div id="search-container" class="px-8 mb-6">
+                <div class="relative group">
+                    <i data-lucide="search" class="absolute left-4 top-1/2 -translate-y-1/2 text-white/30 w-4.5 h-4.5 transition-colors"></i>
+                    <input 
+                        type="text" 
+                        id="search-input"
+                        placeholder="Filtrer mes adresses..."
+                        oninput="renderRestaurants()"
+                        class="w-full bg-white/5 border border-white/10 rounded-2xl py-3.5 pl-12 pr-12 text-xs font-medium focus:outline-none focus:bg-white/10 focus:border-white/30 transition-all placeholder:text-white/20"
+                    >
+                </div>
+            </div>
 
-    <script type="text/babel">
-        const { useState, useEffect, useRef } = React;
-        const { initializeApp, getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, getFirestore, collection, addDoc, onSnapshot, query, doc, deleteDoc } = window.FirebaseSDK;
+            <!-- Content Area -->
+            <div id="main-content" class="flex-1 overflow-y-auto px-6 pb-32 no-scrollbar space-y-8">
+                <!-- Recommendations Section -->
+                <section id="recommendations-section" class="hidden animate-in">
+                    <div class="flex items-center gap-2 mb-4 px-2 text-yellow-400">
+                        <i data-lucide="sparkles" class="w-3.5 h-3.5"></i>
+                        <h2 class="text-[10px] font-black uppercase tracking-widest" id="reco-title">Suggestions IA</h2>
+                    </div>
+                    <div id="reco-list" class="flex gap-4 overflow-x-auto no-scrollbar pb-4 px-2 -mx-2"></div>
+                </section>
 
-        const apiKey = ""; 
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'restos-matt-app';
-        const firebaseConfig = JSON.parse(window.__firebase_config || '{}');
+                <!-- List Section -->
+                <section id="list-section" class="space-y-4">
+                    <div class="flex justify-between items-center mb-2 px-2">
+                        <h2 class="text-[10px] font-black uppercase tracking-widest text-white/30">Mon Carnet</h2>
+                        <div class="flex gap-1 bg-white/5 p-1 rounded-full" id="filter-tabs">
+                            <button onclick="setFilter('all')" class="filter-btn text-[9px] font-bold px-3 py-1 rounded-full transition-all bg-white text-black shadow-lg" data-filter="all">TOUS</button>
+                            <button onclick="setFilter('wishlist')" class="filter-btn text-[9px] font-bold px-3 py-1 rounded-full transition-all text-white/40 hover:text-white" data-filter="wishlist">À TESTER</button>
+                            <button onclick="setFilter('visited')" class="filter-btn text-[9px] font-bold px-3 py-1 rounded-full transition-all text-white/40 hover:text-white" data-filter="visited">FAIT</button>
+                        </div>
+                    </div>
+                    <div id="resto-list" class="space-y-4"></div>
+                </section>
+            </div>
 
-        // Initialisation sécurisée
-        let db, auth;
-        try {
-            const app = initializeApp(firebaseConfig);
-            auth = getAuth(app);
-            db = getFirestore(app);
-        } catch (e) {
-            console.error("Firebase Init Error", e);
+            <!-- Navigation Tab Bar -->
+            <nav class="absolute bottom-8 left-6 right-6 h-20 bg-white/5 backdrop-blur-2xl border border-white/10 rounded-[2.5rem] flex items-center justify-around px-6 shadow-[0_10px_40px_rgba(0,0,0,0.5)] z-50">
+                <button onclick="setActiveTab('list')" class="nav-btn flex flex-col items-center gap-1 transition-all duration-500 scale-110" id="tab-list">
+                    <div class="p-3 rounded-full bg-white/20 shadow-[0_0_20px_rgba(255,255,255,0.3)]"><i data-lucide="chef-hat" class="w-6 h-6"></i></div>
+                    <span class="text-[10px] font-bold tracking-widest uppercase">CARNET</span>
+                </button>
+                <button onclick="setActiveTab('folders')" class="nav-btn flex flex-col items-center gap-1 transition-all duration-500 opacity-50" id="tab-folders">
+                    <div class="p-3 rounded-full bg-transparent"><i data-lucide="list" class="w-6 h-6"></i></div>
+                    <span class="text-[10px] font-bold tracking-widest uppercase">LISTES</span>
+                </button>
+                <button onclick="setActiveTab('map')" class="nav-btn flex flex-col items-center gap-1 transition-all duration-500 opacity-50" id="tab-map">
+                    <div class="p-3 rounded-full bg-transparent"><i data-lucide="map-pin" class="w-6 h-6"></i></div>
+                    <span class="text-[10px] font-bold tracking-widest uppercase">CARTE</span>
+                </button>
+            </nav>
+        </div>
+
+        <!-- MODALS -->
+        <!-- Settings -->
+        <div id="modal-settings" class="hidden fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/80 backdrop-blur-md animate-in">
+            <div class="glass w-full max-w-xs p-8 space-y-4 shadow-2xl bg-black/40 rounded-[24px]">
+                <div class="flex items-center gap-2 mb-2">
+                    <i data-lucide="key" class="w-5 h-5 text-white/50"></i>
+                    <h2 class="text-xl font-black italic uppercase tracking-tighter">Configuration</h2>
+                </div>
+                <p class="text-xs text-white/60 leading-relaxed">Entrez votre clé Google Gemini pour activer l'IA. Elle est stockée localement.</p>
+                <input id="api-key-input" type="password" placeholder="Votre clé API (AIza...)" class="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-sm text-white focus:outline-none focus:border-white/40 placeholder:text-white/20">
+                <div class="flex gap-2 pt-2">
+                    <button onclick="saveApiKey()" class="flex-1 bg-white text-black py-3 rounded-xl font-bold text-xs uppercase tracking-widest hover:bg-gray-200 transition-colors">Sauvegarder</button>
+                    <button onclick="toggleSettings()" class="px-4 bg-white/10 rounded-xl hover:bg-white/20 transition-colors"><i data-lucide="x" class="w-4.5 h-4.5"></i></button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Add Restaurant -->
+        <div id="modal-add-resto" class="hidden fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/80 backdrop-blur-md animate-in">
+            <div class="glass w-full max-w-xs p-8 space-y-4 shadow-2xl bg-black/40 rounded-[24px]">
+                <h2 class="text-xl font-black italic uppercase tracking-tighter">Nouveau Resto</h2>
+                <input id="new-resto-name" type="text" placeholder="Nom de l'établissement" class="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-sm text-white focus:outline-none focus:border-white/40">
+                <input id="new-resto-cuisine" type="text" placeholder="Cuisine (ex: Italien)" class="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-sm text-white focus:outline-none focus:border-white/40">
+                <select id="new-resto-status" class="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-sm text-white focus:outline-none focus:border-white/40 appearance-none">
+                    <option value="wishlist">À tester</option>
+                    <option value="visited">Déjà fait</option>
+                </select>
+                <div class="flex gap-2 pt-2">
+                    <button onclick="addRestaurant()" class="flex-1 bg-white text-black py-3 rounded-xl font-bold text-xs uppercase tracking-widest hover:bg-gray-200 transition-colors">Ajouter</button>
+                    <button onclick="toggleAddResto()" class="px-4 bg-white/10 rounded-xl hover:bg-white/20 transition-colors"><i data-lucide="x" class="w-4.5 h-4.5"></i></button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- DATA ---
+        let restaurants = [
+            { id: 1, name: "Girafe", cuisine: "Fruits de mer", status: "visited", rating: 5, image: "https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?auto=format&fit=crop&w=400&q=80" },
+            { id: 2, name: "Septime", cuisine: "Gastronomique", status: "visited", rating: 4, image: "https://images.unsplash.com/photo-1559339352-11d035aa65de?auto=format&fit=crop&w=400&q=80" },
+            { id: 3, name: "Pink Mamma", cuisine: "Italien", status: "wishlist", rating: 0, image: "https://images.unsplash.com/photo-1552566626-52f8b828add9?auto=format&fit=crop&w=400&q=80" }
+        ];
+
+        let userLists = ["Favoris", "À tester d'urgence", "Dîner Business"];
+        let activeTab = 'list';
+        let filterStatus = 'all';
+        let apiKey = localStorage.getItem('gemini_api_key') || '';
+
+        // --- CORE UI FUNCTIONS ---
+        function init() {
+            lucide.createIcons();
+            document.getElementById('api-key-input').value = apiKey;
+            renderRestaurants();
         }
 
-        const LucideIcon = ({ name, size = 24, className = "" }) => {
-            const iconRef = useRef(null);
-            useEffect(() => {
-                if (window.lucide && iconRef.current) {
-                    iconRef.current.innerHTML = '';
-                    const icon = document.createElement('i');
-                    icon.setAttribute('data-lucide', name);
-                    icon.className = className;
-                    iconRef.current.appendChild(icon);
-                    window.lucide.createIcons();
-                }
-            }, [name, className]);
-            return <span ref={iconRef} style={{ width: size, height: size, display: 'inline-flex' }}></span>;
-        };
+        function setActiveTab(tab) {
+            activeTab = tab;
+            const navButtons = document.querySelectorAll('.nav-btn');
+            navButtons.forEach(btn => {
+                btn.classList.add('opacity-50');
+                btn.classList.remove('scale-110');
+                btn.querySelector('div').classList.remove('bg-white/20', 'shadow-[0_0_20px_rgba(255,255,255,0.3)]');
+                btn.querySelector('div').classList.add('bg-transparent');
+            });
 
-        const App = () => {
-            const [user, setUser] = useState(null);
-            const [view, setView] = useState('list'); 
-            const [restaurants, setRestaurants] = useState([]);
-            const [publicRestos, setPublicRestos] = useState([]);
-            const [recommendations, setRecommendations] = useState([]);
-            const [isAdding, setIsAdding] = useState(false);
-            const [loadingRecs, setLoadingRecs] = useState(false);
+            const activeBtn = document.getElementById(`tab-${tab}`);
+            activeBtn.classList.remove('opacity-50');
+            activeBtn.classList.add('scale-110');
+            activeBtn.querySelector('div').classList.add('bg-white/20', 'shadow-[0_0_20px_rgba(255,255,255,0.3)]');
+            activeBtn.querySelector('div').classList.remove('bg-transparent');
 
-            // Auth logic
-            useEffect(() => {
-                const startAuth = async () => {
-                    try {
-                        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                            await signInWithCustomToken(auth, __initial_auth_token);
-                        } else {
-                            await signInAnonymously(auth);
-                        }
-                    } catch (err) { console.error("Auth failed", err); }
-                };
-                startAuth();
-                return onAuthStateChanged(auth, setUser);
-            }, []);
+            const content = document.getElementById('main-content');
+            const search = document.getElementById('search-container');
+            
+            if (tab === 'list') {
+                search.classList.remove('hidden');
+                renderRestaurants();
+            } else if (tab === 'folders') {
+                search.classList.add('hidden');
+                renderCollections();
+            } else {
+                search.classList.add('hidden');
+                content.innerHTML = `
+                    <div class="flex flex-col items-center justify-center h-64 text-white/30 animate-in">
+                        <i data-lucide="map-pin" class="w-12 h-12 mb-4 opacity-50"></i>
+                        <p class="text-xs font-bold uppercase tracking-widest">Carte indisponible</p>
+                    </div>
+                `;
+                lucide.createIcons();
+            }
+        }
 
-            // Real-time data
-            useEffect(() => {
-                if (!user || !db) return;
+        function setFilter(status) {
+            filterStatus = status;
+            const filterBtns = document.querySelectorAll('.filter-btn');
+            filterBtns.forEach(btn => {
+                btn.classList.remove('bg-white', 'text-black', 'shadow-lg');
+                btn.classList.add('text-white/40', 'hover:text-white');
+            });
+            const activeBtn = document.querySelector(`[data-filter="${status}"]`);
+            activeBtn.classList.add('bg-white', 'text-black', 'shadow-lg');
+            activeBtn.classList.remove('text-white/40', 'hover:text-white');
+            renderRestaurants();
+        }
 
-                const qPrivate = query(collection(db, 'artifacts', appId, 'users', user.uid, 'restaurants'));
-                const unsub1 = onSnapshot(qPrivate, (s) => setRestaurants(s.docs.map(d => ({id: d.id, ...d.data(), type: 'private'}))), (e) => console.log(e));
+        function renderRestaurants() {
+            const query = document.getElementById('search-input').value.toLowerCase();
+            const listContainer = document.getElementById('resto-list');
+            
+            const filtered = restaurants.filter(r => {
+                const matchesStatus = filterStatus === 'all' || r.status === filterStatus;
+                const matchesSearch = r.name.toLowerCase().includes(query);
+                return matchesStatus && matchesSearch;
+            });
 
-                const qPublic = query(collection(db, 'artifacts', appId, 'public', 'data', 'restaurants'));
-                const unsub2 = onSnapshot(qPublic, (s) => setPublicRestos(s.docs.map(d => ({id: d.id, ...d.data(), type: 'public'}))), (e) => console.log(e));
+            if (filtered.length === 0) {
+                listContainer.innerHTML = `<div class="text-center py-10 opacity-30 text-xs font-bold uppercase tracking-widest">Aucune adresse trouvée</div>`;
+                return;
+            }
 
-                return () => { unsub1(); unsub2(); };
-            }, [user]);
-
-            const fetchAIRecommendations = async () => {
-                if (restaurants.length === 0 && publicRestos.length === 0) return;
-                setLoadingRecs(true);
-                const list = [...restaurants, ...publicRestos].map(r => r.name).join(', ');
-                
-                try {
-                    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`, {
-                        method: 'POST',
-                        headers: {'Content-Type': 'application/json'},
-                        body: JSON.stringify({
-                            contents: [{ parts: [{ text: `Basé sur ces restaurants à Paris: ${list}, suggère 3 nouveaux restos. Répond uniquement en JSON: {"recos": [{"name": "Nom", "cuisine": "Style", "desc": "Pourquoi?"}]}` }] }],
-                            generationConfig: { responseMimeType: "application/json" }
-                        })
-                    });
-                    const data = await res.json();
-                    const parsed = JSON.parse(data.candidates[0].content.parts[0].text);
-                    setRecommendations(parsed.recos);
-                } catch (e) {
-                    console.error("AI Error", e);
-                } finally {
-                    setLoadingRecs(false);
-                }
-            };
-
-            useEffect(() => {
-                if (view === 'ai' && recommendations.length === 0) fetchAIRecommendations();
-            }, [view]);
-
-            const handleSubmit = async (e) => {
-                e.preventDefault();
-                const fd = new FormData(e.target);
-                const data = {
-                    name: fd.get('name'),
-                    cuisine: fd.get('cuisine'),
-                    note: fd.get('note'),
-                    userId: user.uid,
-                    timestamp: Date.now()
-                };
-                const isPrivate = fd.get('privacy') === 'on';
-                const colPath = isPrivate 
-                    ? collection(db, 'artifacts', appId, 'users', user.uid, 'restaurants')
-                    : collection(db, 'artifacts', appId, 'public', 'data', 'restaurants');
-                
-                await addDoc(colPath, data);
-                setIsAdding(false);
-            };
-
-            return (
-                <div className="flex flex-col h-screen max-w-md mx-auto bg-black relative overflow-hidden">
-                    {/* Background Aura */}
-                    <div className="absolute top-[-10%] left-[-10%] w-[120%] h-[40%] bg-blue-900/20 blur-[100px] pointer-events-none"></div>
-
-                    <header className="px-6 pt-12 pb-6 flex justify-between items-center relative z-10">
-                        <h1 className="text-2xl font-black italic tracking-tighter uppercase leading-none">
-                            <span className="text-blue-600">Restos</span><br/>de Matt
-                        </h1>
-                        <button onClick={() => setIsAdding(true)} className="w-12 h-12 glass rounded-2xl flex items-center justify-center text-blue-500 active:scale-90 transition-transform">
-                            <LucideIcon name="plus" size={24} />
-                        </button>
-                    </header>
-
-                    <main className="flex-1 overflow-y-auto no-scrollbar px-6 pb-32">
-                        {view === 'list' ? (
-                            <div className="fade-in space-y-8">
-                                <section>
-                                    <h2 className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/30 mb-4">Mes Adresses</h2>
-                                    <div className="space-y-3">
-                                        {restaurants.map(r => (
-                                            <div key={r.id} className="glass rounded-3xl p-5 border-l-4 border-blue-600/50">
-                                                <h3 className="font-bold text-lg">{r.name}</h3>
-                                                <p className="text-xs text-white/40 uppercase tracking-widest">{r.cuisine}</p>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </section>
-
-                                <section>
-                                    <h2 className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/30 mb-4">Partagés</h2>
-                                    <div className="space-y-3">
-                                        {publicRestos.map(r => (
-                                            <div key={r.id} className="glass rounded-3xl p-5 border-l-4 border-white/10">
-                                                <h3 className="font-bold text-lg">{r.name}</h3>
-                                                <p className="text-xs text-white/40 uppercase tracking-widest">{r.cuisine}</p>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </section>
-                            </div>
-                        ) : (
-                            <div className="fade-in space-y-6">
-                                <div className="mb-6">
-                                    <h2 className="text-2xl font-black italic">Conseils IA</h2>
-                                    <p className="text-xs text-white/40">Basé sur tes préférences actuelles</p>
-                                </div>
-                                {loadingRecs ? (
-                                    <div className="flex justify-center py-20 animate-pulse text-blue-500">
-                                        <LucideIcon name="sparkles" className="animate-spin" />
-                                    </div>
-                                ) : (
-                                    recommendations.map((rec, i) => (
-                                        <div key={i} className="glass p-6 rounded-[2.5rem] border border-blue-500/20">
-                                            <h3 className="text-xl font-bold mb-1 text-blue-400">{rec.name}</h3>
-                                            <p className="text-[10px] font-bold uppercase text-white/30 mb-4">{rec.cuisine}</p>
-                                            <p className="text-sm opacity-70 leading-relaxed italic">"{rec.desc}"</p>
-                                        </div>
-                                    ))
-                                )}
-                            </div>
-                        )}
-                    </main>
-
-                    {/* Bottom Nav */}
-                    <nav className="fixed bottom-8 left-8 right-8 h-20 glass rounded-[2.5rem] flex items-center justify-around px-2 z-50 max-w-md mx-auto">
-                        <button onClick={() => setView('list')} className={`flex-1 flex flex-col items-center gap-1 p-4 rounded-3xl transition-all ${view === 'list' ? 'active-tab' : 'opacity-40'}`}>
-                            <LucideIcon name="list" size={20} />
-                            <span className="text-[8px] font-bold uppercase">Ma Liste</span>
-                        </button>
-                        <button onClick={() => setView('ai')} className={`flex-1 flex flex-col items-center gap-1 p-4 rounded-3xl transition-all ${view === 'ai' ? 'active-tab' : 'opacity-40'}`}>
-                            <LucideIcon name="sparkles" size={20} />
-                            <span className="text-[8px] font-bold uppercase">Conseils</span>
-                        </button>
-                    </nav>
-
-                    {/* Add Drawer */}
-                    {isAdding && (
-                        <div className="fixed inset-0 z-[100] flex items-end">
-                            <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setIsAdding(false)}></div>
-                            <form onSubmit={handleSubmit} className="relative w-full glass rounded-t-[3rem] p-8 border-t border-white/20 fade-in">
-                                <div className="w-12 h-1 bg-white/20 rounded-full mx-auto mb-8"></div>
-                                <h3 className="text-2xl font-black mb-6 italic">Nouveau Resto</h3>
-                                <div className="space-y-4">
-                                    <input name="name" required placeholder="Nom du restaurant" className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 outline-none focus:border-blue-500" />
-                                    <input name="cuisine" placeholder="Cuisine (ex: Japonais)" className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 outline-none focus:border-blue-500" />
-                                    <div className="flex items-center justify-between glass p-4 rounded-2xl">
-                                        <span className="text-sm font-bold">Privé ?</span>
-                                        <input type="checkbox" name="privacy" defaultChecked className="w-5 h-5 accent-blue-600" />
-                                    </div>
-                                    <button type="submit" className="w-full py-4 bg-blue-600 rounded-2xl font-black uppercase tracking-widest text-xs shadow-lg active:scale-95 transition-all">Ajouter</button>
-                                </div>
-                            </form>
+            listContainer.innerHTML = filtered.map(resto => `
+                <div class="glass flex h-28 overflow-hidden active:scale-95 transition-all group cursor-pointer hover:bg-white/15 rounded-[24px]">
+                    <img src="${resto.image}" class="w-28 h-full object-cover shrink-0" alt="${resto.name}">
+                    <div class="flex-1 p-4 flex flex-col justify-between">
+                        <div class="flex justify-between items-start">
+                            <h3 class="font-bold text-white text-sm">${resto.name}</h3>
+                            <i data-lucide="${resto.status === 'visited' ? 'check-circle' : 'heart'}" class="w-4 h-4 ${resto.status === 'visited' ? 'text-emerald-400' : 'text-rose-400'}"></i>
                         </div>
-                    )}
+                        <div class="flex justify-between items-end">
+                            <p class="text-[9px] text-white/40 font-black uppercase tracking-widest">${resto.cuisine}</p>
+                            <div class="flex gap-1">
+                                ${Array(5).fill(0).map((_, i) => `<i data-lucide="star" class="w-2.5 h-2.5 ${i < resto.rating ? 'fill-yellow-400 text-yellow-400' : 'text-white/20'}"></i>`).join('')}
+                            </div>
+                        </div>
+                    </div>
                 </div>
-            );
-        };
+            `).join('');
+            lucide.createIcons();
+        }
 
-        const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<App />);
+        function renderCollections() {
+            const content = document.getElementById('main-content');
+            content.innerHTML = `
+                <section class="space-y-6 animate-in">
+                    <div class="flex justify-between items-center px-2">
+                        <h2 class="text-[10px] font-black uppercase tracking-widest text-white/30">Mes Collections</h2>
+                        <button class="flex items-center gap-2 text-[10px] font-bold text-blue-400 uppercase">
+                            <i data-lucide="folder-plus" class="w-3.5 h-3.5"></i> Nouvelle Liste
+                        </button>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        ${userLists.map(list => `
+                            <div class="glass aspect-square p-6 flex flex-col justify-between group active:scale-95 transition-all hover:bg-white/15 cursor-pointer rounded-[24px]">
+                                <div class="w-10 h-10 rounded-2xl bg-white/10 flex items-center justify-center text-white/40 group-hover:text-blue-400 group-hover:bg-white/20 transition-all">
+                                    <i data-lucide="list" class="w-5 h-5"></i>
+                                </div>
+                                <div>
+                                    <h3 class="font-bold text-sm leading-tight mb-1">${list}</h3>
+                                    <p class="text-[10px] text-white/30 font-bold uppercase tracking-widest">0 Lieux</p>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </section>
+            `;
+            lucide.createIcons();
+        }
+
+        // --- MODAL CONTROLLERS ---
+        function toggleSettings() {
+            const modal = document.getElementById('modal-settings');
+            modal.classList.toggle('hidden');
+        }
+
+        function saveApiKey() {
+            apiKey = document.getElementById('api-key-input').value;
+            localStorage.setItem('gemini_api_key', apiKey);
+            toggleSettings();
+            showNotice("Clé sauvegardée");
+        }
+
+        function toggleAddResto() {
+            const modal = document.getElementById('modal-add-resto');
+            modal.classList.toggle('hidden');
+        }
+
+        function addRestaurant() {
+            const name = document.getElementById('new-resto-name').value;
+            const cuisine = document.getElementById('new-resto-cuisine').value;
+            const status = document.getElementById('new-resto-status').value;
+
+            if (!name) return;
+
+            restaurants.unshift({
+                id: Date.now(),
+                name,
+                cuisine,
+                status,
+                rating: 0,
+                image: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=400&q=80"
+            });
+
+            toggleAddResto();
+            renderRestaurants();
+            document.getElementById('new-resto-name').value = '';
+            document.getElementById('new-resto-cuisine').value = '';
+        }
+
+        // --- IA LOGIC ---
+        async function generateRecommendations() {
+            const btn = document.getElementById('ai-btn');
+            const section = document.getElementById('recommendations-section');
+            const recoList = document.getElementById('reco-list');
+            const recoTitle = document.getElementById('reco-title');
+
+            btn.classList.add('animate-spin');
+            section.classList.remove('hidden');
+            recoList.innerHTML = `<div class="text-[10px] font-bold text-white/20 px-2 py-8 animate-pulse">Recherche des pépites parisiennes...</div>`;
+
+            if (!apiKey) {
+                recoTitle.innerText = "Suggestions (Mode Démo)";
+                setTimeout(() => {
+                    displayRecos([
+                        { name: "Kodawari Ramen", cuisine: "Japonais", reason: "Immersion totale façon marché aux poissons de Tokyo." },
+                        { name: "Le Train Bleu", cuisine: "Gastronomique", reason: "Un décor impérial unique au monde." },
+                        { name: "Carbonis", cuisine: "Italien", reason: "L'élégance brute et des pâtes parfaites." }
+                    ]);
+                    btn.classList.remove('animate-spin');
+                }, 1500);
+                return;
+            }
+
+            recoTitle.innerText = "Suggestions IA";
+            const favorites = restaurants.map(r => r.cuisine).join(', ');
+            const prompt = `Basé sur ces goûts : ${favorites || "italien, branché"}, suggère 3 restaurants parisiens iconiques. Réponds UNIQUEMENT avec un JSON valide sans markdown : [{"name": "Nom", "reason": "Argument court", "cuisine": "Type"}]`;
+
+            try {
+                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{ parts: [{ text: prompt }] }],
+                        generationConfig: { responseMimeType: "application/json" }
+                    })
+                });
+
+                if (!response.ok) throw new Error("Erreur API");
+
+                const data = await response.json();
+                let text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+                text = text.replace(/```json|```/g, '').trim();
+                const results = JSON.parse(text);
+                displayRecos(results);
+            } catch (err) {
+                console.error(err);
+                recoList.innerHTML = `<div class="text-[10px] text-red-400 px-2 py-8">Erreur API : Vérifiez votre clé.</div>`;
+            } finally {
+                btn.classList.remove('animate-spin');
+            }
+        }
+
+        function displayRecos(items) {
+            const recoList = document.getElementById('reco-list');
+            recoList.innerHTML = items.map(rec => `
+                <div class="min-w-[240px] glass p-5 rounded-[2rem] border-yellow-500/20 hover:border-yellow-500/40 transition-colors animate-in">
+                    <h3 class="font-bold text-sm text-white mb-1">${rec.name}</h3>
+                    <div class="text-[10px] font-bold text-white/60 mb-2 uppercase">${rec.cuisine}</div>
+                    <p class="text-[10px] text-white/40 mb-3 italic leading-relaxed">"${rec.reason}"</p>
+                    <button class="text-[10px] font-black text-yellow-500 uppercase tracking-widest flex items-center gap-1 hover:gap-2 transition-all">
+                        Détails <i data-lucide="chevron-right" class="w-2.5 h-2.5"></i>
+                    </button>
+                </div>
+            `).join('');
+            lucide.createIcons();
+        }
+
+        function showNotice(msg) {
+            const toast = document.createElement('div');
+            toast.className = "fixed top-8 left-1/2 -translate-x-1/2 z-[200] px-6 py-3 glass rounded-full text-[10px] font-black uppercase tracking-widest text-emerald-400 animate-in";
+            toast.innerText = msg;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 2000);
+        }
+
+        window.onload = init;
     </script>
 </body>
 </html>
