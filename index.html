@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Les Restos de Matt’s - Paris Premium</title>
+    <title>Les Restos de Matt’s - Paris Premium AI</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet">
@@ -36,6 +36,39 @@
             50% { opacity: 0.4; transform: scale(1.05); } 
         }
         .animate-pulse-slow { animation: pulse-slow 8s infinite ease-in-out; }
+
+        /* Star Animation */
+        .star-btn:active { transform: scale(0.8); }
+
+        /* Loader for Import */
+        .loader {
+            border: 2px solid rgba(255,255,255,0.1);
+            border-left-color: #3b82f6;
+            border-radius: 50%;
+            width: 16px;
+            height: 16px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* Shimmer effect for AI loading */
+        .ai-loading {
+            position: relative;
+            overflow: hidden;
+        }
+        .ai-loading::after {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 50%;
+            height: 100%;
+            background: linear-gradient(to right, transparent, rgba(255,255,255,0.1), transparent);
+            animation: shimmer 1.5s infinite;
+        }
+        @keyframes shimmer {
+            100% { left: 150%; }
+        }
     </style>
 </head>
 <body>
@@ -53,7 +86,7 @@
                     <h1 class="text-3xl font-black italic tracking-tighter uppercase drop-shadow-lg leading-none">
                         Les Restos<br><span class="text-blue-500">de Matt’s</span>
                     </h1>
-                    <p class="text-[9px] font-bold text-white/40 uppercase tracking-[0.3em] mt-2 pl-1">Édition Paris Premium</p>
+                    <p class="text-[9px] font-bold text-white/40 uppercase tracking-[0.3em] mt-2 pl-1">Édition Paris AI ✨</p>
                 </div>
                 
                 <!-- Dynamic Header for Lists -->
@@ -71,7 +104,7 @@
                     </button>
                     
                     <!-- AI Button -->
-                    <button id="ai-btn" onclick="generateRecommendations()" class="p-3 bg-white/5 backdrop-blur-xl rounded-full border border-blue-500/30 text-blue-400 active:scale-90 transition-all hover:bg-blue-500/20 hover:text-white shadow-[0_0_15px_rgba(59,130,246,0.3)]">
+                    <button id="ai-btn" onclick="generateGeminiRecommendations()" class="p-3 bg-white/5 backdrop-blur-xl rounded-full border border-blue-500/30 text-blue-400 active:scale-90 transition-all hover:bg-blue-500/20 hover:text-white shadow-[0_0_15px_rgba(59,130,246,0.3)]">
                         <i data-lucide="sparkles" class="w-5 h-5"></i>
                     </button>
                     
@@ -104,11 +137,17 @@
                     <div class="flex items-center justify-between mb-3 px-1">
                         <div class="flex items-center gap-2 text-yellow-400">
                             <i data-lucide="zap" class="w-3.5 h-3.5 fill-current"></i>
-                            <h2 class="text-[10px] font-black uppercase tracking-widest">Suggestions Flash</h2>
+                            <h2 class="text-[10px] font-black uppercase tracking-widest">Suggestions Gemini</h2>
                         </div>
                         <button onclick="closeRecommendations()" class="text-[9px] text-white/30 font-bold uppercase hover:text-white">Fermer</button>
                     </div>
+                    <!-- The list container -->
                     <div id="reco-list" class="flex gap-3 overflow-x-auto no-scrollbar pb-2 px-1 -mx-1 snap-x"></div>
+                    <!-- Loading State -->
+                    <div id="reco-loading" class="hidden flex gap-3 overflow-hidden px-1 -mx-1">
+                         <div class="w-48 h-32 glass rounded-2xl bg-[#1a1a1a] ai-loading shrink-0"></div>
+                         <div class="w-48 h-32 glass rounded-2xl bg-[#1a1a1a] ai-loading shrink-0"></div>
+                    </div>
                 </section>
 
                 <!-- List Section (Carnet or Specific List) -->
@@ -157,17 +196,40 @@
 
         <!-- MODAL: ADD RESTAURANT -->
         <div id="modal-add-resto" class="hidden fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/60 backdrop-blur-md animate-in" onclick="if(event.target === this) toggleModal('modal-add-resto')">
-            <div class="glass w-full max-w-xs p-6 space-y-4 shadow-2xl bg-[#111] rounded-[24px] border border-white/10">
-                <h2 class="text-lg font-black italic uppercase tracking-tighter mb-4">Nouveau Resto</h2>
-                <div class="space-y-3">
-                    <div class="relative">
-                        <i data-lucide="store" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30"></i>
-                        <input id="new-resto-name" type="text" placeholder="Nom de l'établissement" class="w-full bg-black/50 border border-white/10 rounded-xl py-3 pl-10 pr-3 text-sm text-white focus:outline-none focus:border-white/40">
+            <div class="glass w-full max-w-xs p-6 space-y-4 shadow-2xl bg-[#111] rounded-[24px] border border-white/10 overflow-hidden">
+                <h2 class="text-lg font-black italic uppercase tracking-tighter mb-2">Nouveau Resto</h2>
+                
+                <!-- Google Import Section -->
+                <div class="bg-blue-500/10 p-3 rounded-xl border border-blue-500/20 mb-4">
+                    <label class="text-[9px] font-bold text-blue-300 uppercase tracking-widest mb-2 block flex items-center gap-1">
+                        <i data-lucide="map-pin" class="w-3 h-3"></i> Importer depuis Maps
+                    </label>
+                    <div class="flex gap-2">
+                        <input id="gmb-import-url" type="text" placeholder="Coller lien Google Maps..." class="flex-1 bg-black/30 border border-blue-500/30 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:bg-black/50">
+                        <button onclick="importFromGoogle()" id="btn-import-gmb" class="bg-blue-600 hover:bg-blue-500 text-white w-8 flex items-center justify-center rounded-lg text-xs font-bold transition-colors">
+                            <i data-lucide="arrow-down-to-line" class="w-4 h-4"></i>
+                        </button>
                     </div>
+                </div>
+
+                <div class="space-y-3 max-h-[50vh] overflow-y-auto no-scrollbar pr-1">
+                    
+                    <!-- Name Input with Search Button -->
+                    <div class="flex gap-2 items-center">
+                        <div class="relative flex-1">
+                            <i data-lucide="store" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30"></i>
+                            <input id="new-resto-name" type="text" placeholder="Nom de l'établissement" class="w-full bg-black/50 border border-white/10 rounded-xl py-3 pl-10 pr-3 text-sm text-white focus:outline-none focus:border-white/40 transition-colors">
+                        </div>
+                        <button onclick="searchOnGoogle()" class="p-3.5 bg-white/5 rounded-xl border border-white/10 hover:bg-white/10 text-white/50 hover:text-white transition-colors" title="Rechercher sur Google">
+                            <i data-lucide="search" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+                    
                     <div class="relative">
                         <i data-lucide="utensils" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30"></i>
-                        <input id="new-resto-cuisine" type="text" placeholder="Type de cuisine (ex: Italien)" class="w-full bg-black/50 border border-white/10 rounded-xl py-3 pl-10 pr-3 text-sm text-white focus:outline-none focus:border-white/40">
+                        <input id="new-resto-cuisine" type="text" placeholder="Type de cuisine (ex: Italien)" class="w-full bg-black/50 border border-white/10 rounded-xl py-3 pl-10 pr-3 text-sm text-white focus:outline-none focus:border-white/40 transition-colors">
                     </div>
+                    
                     <div class="relative">
                         <i data-lucide="folder" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30"></i>
                         <select id="new-resto-list" class="w-full bg-black/50 border border-white/10 rounded-xl py-3 pl-10 pr-3 text-xs font-bold text-white focus:outline-none appearance-none">
@@ -176,8 +238,24 @@
                         </select>
                         <i data-lucide="chevron-down" class="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30 pointer-events-none"></i>
                     </div>
+
+                    <!-- Rating & Note Input -->
+                    <div class="bg-white/5 p-3 rounded-xl border border-white/5 relative">
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="text-[9px] font-bold uppercase tracking-widest text-white/50">Ma Note</span>
+                            <div class="flex gap-1" id="new-resto-rating-container">
+                                <!-- Generated by JS -->
+                            </div>
+                        </div>
+                        <textarea id="new-resto-note" rows="2" placeholder="Un petit avis personnel..." class="w-full bg-black/30 border border-white/10 rounded-lg p-2 text-xs text-white focus:outline-none focus:border-white/30 placeholder:text-white/20 resize-none pr-8"></textarea>
+                        <!-- AI Polish Button -->
+                         <button onclick="polishNote('new-resto-note')" class="absolute bottom-4 right-4 text-white/20 hover:text-yellow-300 transition-colors" title="Reformuler avec l'IA ✨">
+                            <i data-lucide="sparkles" class="w-4 h-4"></i>
+                        </button>
+                    </div>
                 </div>
-                <div class="flex gap-2 pt-2">
+
+                <div class="flex gap-2 pt-4">
                     <button onclick="addRestaurant()" class="flex-1 bg-white text-black py-3 rounded-xl font-bold text-xs uppercase tracking-widest hover:bg-gray-200 transition-colors active:scale-95">Ajouter</button>
                     <button onclick="toggleModal('modal-add-resto')" class="px-4 bg-white/5 rounded-xl hover:bg-white/10 transition-colors text-white/50 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
                 </div>
@@ -200,26 +278,45 @@
 
         <!-- MODAL: RESTAURANT DETAILS -->
         <div id="modal-details" class="hidden fixed inset-0 z-[100] flex items-end sm:items-center justify-center sm:p-6 bg-black/80 backdrop-blur-md animate-in" onclick="if(event.target === this) toggleModal('modal-details')">
-            <div class="glass w-full max-w-sm bg-[#111] rounded-t-[2rem] sm:rounded-[24px] border-t sm:border border-white/10 overflow-hidden shadow-2xl relative">
+            <div class="glass w-full max-w-sm bg-[#111] rounded-t-[2rem] sm:rounded-[24px] border-t sm:border border-white/10 overflow-hidden shadow-2xl relative max-h-[90vh] overflow-y-auto no-scrollbar">
                 <button onclick="toggleModal('modal-details')" class="absolute top-4 right-4 z-20 p-2 bg-black/40 backdrop-blur-md rounded-full text-white/70 hover:text-white">
                     <i data-lucide="x" class="w-4 h-4"></i>
                 </button>
 
-                <div class="h-48 relative">
+                <div class="h-48 relative shrink-0">
                     <img id="detail-image" src="" class="w-full h-full object-cover">
                     <div class="absolute inset-0 bg-gradient-to-t from-[#111] to-transparent"></div>
-                    <div class="absolute bottom-4 left-6">
-                        <div id="detail-tags" class="flex gap-2 mb-2"></div>
-                        <h2 id="detail-name" class="text-2xl font-black italic text-white leading-none"></h2>
+                    <div class="absolute bottom-4 left-6 right-6 flex items-end justify-between">
+                        <div>
+                            <div id="detail-tags" class="flex gap-2 mb-2"></div>
+                            <h2 id="detail-name" class="text-2xl font-black italic text-white leading-none shadow-black drop-shadow-md"></h2>
+                        </div>
+                        <a id="detail-gmb-link" href="#" target="_blank" class="hidden p-2 bg-white text-black rounded-full hover:bg-gray-200 transition-colors shadow-lg">
+                            <i data-lucide="map-pin" class="w-5 h-5"></i>
+                        </a>
                     </div>
                 </div>
 
                 <div class="p-6 pt-2 space-y-6">
-                    <div class="flex justify-between items-center bg-white/5 p-4 rounded-2xl border border-white/5">
-                        <div class="text-xs text-white/50 font-bold uppercase tracking-widest">Note</div>
-                        <div id="detail-stars" class="flex gap-1 text-yellow-400"></div>
+                    <!-- Interactive Rating -->
+                    <div class="flex flex-col gap-2 bg-white/5 p-4 rounded-2xl border border-white/5">
+                        <div class="flex justify-between items-center">
+                            <div class="text-[10px] text-white/50 font-bold uppercase tracking-widest">Ma Note</div>
+                            <div id="detail-stars" class="flex gap-1.5 cursor-pointer"></div>
+                        </div>
                     </div>
 
+                    <!-- Editable Note -->
+                    <div class="space-y-2 relative">
+                        <div class="text-[10px] text-white/50 font-bold uppercase tracking-widest px-1">Ma Critique</div>
+                        <textarea id="detail-note" onchange="updateRestoNote(this.value)" rows="3" class="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-sm text-white/90 leading-relaxed focus:outline-none focus:bg-white/10 focus:border-white/20 transition-all placeholder:text-white/20" placeholder="Ajouter une note personnelle..."></textarea>
+                        <!-- AI Polish Button -->
+                        <button onclick="polishNote('detail-note')" class="absolute bottom-4 right-4 text-white/20 hover:text-yellow-300 transition-colors" title="Reformuler avec l'IA ✨">
+                            <i data-lucide="sparkles" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+
+                    <!-- Actions -->
                     <div class="grid grid-cols-2 gap-3">
                         <button onclick="toggleStatusFromDetail()" id="btn-toggle-status" class="p-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 active:scale-95 transition-all flex flex-col items-center gap-2">
                             <i data-lucide="check-circle" class="w-5 h-5"></i>
@@ -238,12 +335,13 @@
 
     <script>
         // --- DATA & STATE ---
-        // Simulating Database
+        const apiKey = ""; // Gemini API Key injected by environment
+
         let restaurants = [
-            { id: 1, name: "Girafe", cuisine: "Fruits de mer", status: "visited", rating: 5, listId: 'main', image: "https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?auto=format&fit=crop&w=600&q=80" },
-            { id: 2, name: "Septime", cuisine: "Gastronomique", status: "visited", rating: 4, listId: 'main', image: "https://images.unsplash.com/photo-1559339352-11d035aa65de?auto=format&fit=crop&w=600&q=80" },
-            { id: 3, name: "Pink Mamma", cuisine: "Italien", status: "wishlist", rating: 0, listId: 'main', image: "https://images.unsplash.com/photo-1552566626-52f8b828add9?auto=format&fit=crop&w=600&q=80" },
-            { id: 4, name: "Holybelly 5", cuisine: "Brunch", status: "wishlist", rating: 0, listId: 'favs', image: "https://images.unsplash.com/photo-1594046243098-0fceea9d451e?auto=format&fit=crop&w=600&q=80" }
+            { id: 1, name: "Girafe", cuisine: "Fruits de mer", status: "visited", rating: 5, note: "Vue incroyable sur la Tour Eiffel, idéal pour une demande en mariage !", listId: 'main', gmbLink: "https://goo.gl/maps/example", image: "https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?auto=format&fit=crop&w=600&q=80" },
+            { id: 2, name: "Septime", cuisine: "Gastronomique", status: "visited", rating: 4, note: "Très fin mais impossible d'avoir une table.", listId: 'main', image: "https://images.unsplash.com/photo-1559339352-11d035aa65de?auto=format&fit=crop&w=600&q=80" },
+            { id: 3, name: "Pink Mamma", cuisine: "Italien", status: "wishlist", rating: 0, note: "", listId: 'main', image: "https://images.unsplash.com/photo-1552566626-52f8b828add9?auto=format&fit=crop&w=600&q=80" },
+            { id: 4, name: "Holybelly 5", cuisine: "Brunch", status: "wishlist", rating: 0, note: "", listId: 'favs', image: "https://images.unsplash.com/photo-1594046243098-0fceea9d451e?auto=format&fit=crop&w=600&q=80" }
         ];
 
         let userLists = [
@@ -251,22 +349,12 @@
             { id: 'date', title: "Date Night", icon: "glass-water" },
             { id: 'biz', title: "Business", icon: "briefcase" }
         ];
-        
-        // Simulating "Fast Model" AI Database
-        const aiDatabase = [
-            { name: "Kodawari Ramen", cuisine: "Japonais", reason: "Immersion marché Tokyoïte." },
-            { name: "Le Train Bleu", cuisine: "Français", reason: "Décor historique sublime." },
-            { name: "Carbonis", cuisine: "Italien", reason: "Pâtes et ambiance tamisée." },
-            { name: "Miznon", cuisine: "Street Food", reason: "Le chou-fleur rôti légendaire." },
-            { name: "Frenchie", cuisine: "Bistrot", reason: "La rue du Nil en effervescence." },
-            { name: "Ober Mamma", cuisine: "Italien", reason: "Cocktails et pizzas truffe." },
-            { name: "Double Dragon", cuisine: "Asiatique", reason: "Plats épicés à partager." }
-        ];
 
-        let currentView = 'list'; // 'list' or 'folders'
-        let currentListFilter = 'main'; // 'main' or list ID
-        let filterStatus = 'all'; // 'all', 'wishlist', 'visited'
+        let currentView = 'list';
+        let currentListFilter = 'main';
+        let filterStatus = 'all';
         let currentDetailId = null;
+        let newRestoRating = 0; // Temp state for add modal
 
         // --- INIT ---
         window.onload = function() {
@@ -274,7 +362,197 @@
             renderRestaurants();
             renderFolders();
             updateListSelect();
+            renderAddRatingStars();
         };
+
+        // --- GEMINI API HELPERS ---
+        async function callGemini(prompt, schema = null) {
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+            
+            const requestBody = {
+                contents: [{ parts: [{ text: prompt }] }]
+            };
+
+            if (schema) {
+                requestBody.generationConfig = {
+                    responseMimeType: "application/json",
+                    responseSchema: schema
+                };
+            }
+
+            try {
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(requestBody)
+                });
+                
+                const data = await response.json();
+                
+                if (data.error) throw new Error(data.error.message);
+                
+                const text = data.candidates[0].content.parts[0].text;
+                return schema ? JSON.parse(text) : text;
+            } catch (error) {
+                console.error("Gemini Error:", error);
+                alert("Désolé, l'IA est en pause café (Erreur API). Réessayez !");
+                return null;
+            }
+        }
+
+        // --- AI FEATURES ---
+
+        // 1. Magic Recommendations
+        async function generateGeminiRecommendations() {
+            const section = document.getElementById('recommendations-section');
+            const list = document.getElementById('reco-list');
+            const loading = document.getElementById('reco-loading');
+            
+            section.classList.remove('hidden');
+            list.innerHTML = '';
+            list.classList.add('hidden');
+            loading.classList.remove('hidden');
+            loading.classList.add('flex');
+
+            const excluded = restaurants.map(r => r.name).join(", ");
+            const prompt = `Je cherche 3 recommandations de restaurants à Paris qui ne sont PAS dans cette liste : [${excluded}]. 
+            Donne-moi un mélange de classique, tendance, ou street food. 
+            Pour chaque resto, donne-moi le nom, le type de cuisine, et une raison ultra-courte et "punchy" (max 10 mots) de pourquoi y aller.`;
+
+            const schema = {
+                type: "ARRAY",
+                items: {
+                    type: "OBJECT",
+                    properties: {
+                        name: { type: "STRING" },
+                        cuisine: { type: "STRING" },
+                        reason: { type: "STRING" }
+                    }
+                }
+            };
+
+            const results = await callGemini(prompt, schema);
+            
+            loading.classList.add('hidden');
+            loading.classList.remove('flex');
+            list.classList.remove('hidden');
+
+            if (results) {
+                list.innerHTML = results.map(item => `
+                    <div class="snap-start shrink-0 w-48 p-3 glass rounded-2xl border border-white/10 bg-[#1a1a1a]">
+                        <div class="flex items-center gap-1.5 mb-1">
+                            <i data-lucide="sparkles" class="w-3 h-3 text-blue-400"></i>
+                            <span class="text-[9px] font-bold text-blue-400 uppercase tracking-widest">Gemini</span>
+                        </div>
+                        <h3 class="font-bold text-sm text-white">${item.name}</h3>
+                        <p class="text-[10px] text-white/60 mb-2">${item.cuisine}</p>
+                        <p class="text-[10px] italic text-white/80 leading-tight">"${item.reason}"</p>
+                        <button onclick="addRecommended('${item.name.replace(/'/g, "\\'")}', '${item.cuisine.replace(/'/g, "\\'")}')" class="mt-2 w-full py-1.5 rounded-lg bg-white/10 hover:bg-white text-[9px] font-bold uppercase tracking-widest hover:text-black transition-colors">Ajouter</button>
+                    </div>
+                `).join('');
+                lucide.createIcons();
+            } else {
+                section.classList.add('hidden'); // Hide if error
+            }
+        }
+
+        // 2. Note Polisher
+        async function polishNote(inputId) {
+            const textarea = document.getElementById(inputId);
+            const originalText = textarea.value;
+            
+            if (!originalText || originalText.length < 3) {
+                alert("Écris un petit truc d'abord pour que je puisse le sublimer !");
+                return;
+            }
+
+            // Visual feedback on the button
+            const btn = textarea.parentElement.querySelector('button');
+            const originalIcon = btn.innerHTML;
+            btn.innerHTML = '<div class="loader"></div>';
+            
+            const prompt = `Réécris cette critique de restaurant pour qu'elle soit plus élégante, spirituelle et concise (max 30 mots) en français. Garde le même sentiment (positif ou négatif) : "${originalText}"`;
+            
+            const polishedText = await callGemini(prompt);
+            
+            if (polishedText) {
+                textarea.value = polishedText.trim();
+                // If it's the details modal, verify we trigger the save
+                if(inputId === 'detail-note') updateRestoNote(polishedText.trim());
+            }
+
+            btn.innerHTML = originalIcon;
+            lucide.createIcons();
+        }
+
+        // --- NEW FEATURES: GOOGLE SEARCH & IMPORT ---
+
+        // 1. Search on Google Button
+        function searchOnGoogle() {
+            const name = document.getElementById('new-resto-name').value;
+            if(!name) {
+                alert("Entre un nom d'abord (ex: Mamma Primi)");
+                return;
+            }
+            // Open a new tab with Google Search
+            const query = encodeURIComponent(name + " restaurant paris");
+            window.open(`https://www.google.com/search?q=${query}`, '_blank');
+        }
+
+        // 2. Simulate Google Maps Import
+        function importFromGoogle() {
+            const urlInput = document.getElementById('gmb-import-url');
+            const btn = document.getElementById('btn-import-gmb');
+            const originalBtnContent = btn.innerHTML;
+            const url = urlInput.value;
+
+            if(!url) {
+                alert("Colle un lien Google Maps d'abord !");
+                return;
+            }
+
+            // UI Loading State
+            btn.innerHTML = '<div class="loader"></div>';
+            btn.disabled = true;
+
+            // SIMULATION of fetching data (since we can't really scrape client-side)
+            setTimeout(() => {
+                // Try to extract name from URL if possible, else generic
+                // Google Maps links often look like /maps/place/Name+Of+Place/...
+                let extractedName = "Nouveau Restaurant";
+                let extractedCuisine = "Cuisine du monde";
+                
+                // Very basic extraction logic for simulation
+                if(url.includes('/place/')) {
+                    try {
+                        const parts = url.split('/place/')[1].split('/')[0];
+                        extractedName = decodeURIComponent(parts.replace(/\+/g, ' '));
+                    } catch(e) {}
+                }
+
+                // Fill Form
+                document.getElementById('new-resto-name').value = extractedName;
+                document.getElementById('new-resto-cuisine').value = extractedCuisine;
+                
+                // Add a "Verified" visual cue
+                urlInput.style.borderColor = "#10b981"; // green
+                
+                // Reset Button
+                btn.innerHTML = '<i data-lucide="check" class="w-4 h-4"></i>';
+                btn.classList.remove('bg-blue-600', 'hover:bg-blue-500');
+                btn.classList.add('bg-emerald-600', 'hover:bg-emerald-500');
+                
+                setTimeout(() => {
+                    btn.disabled = false;
+                    btn.innerHTML = originalBtnContent;
+                    btn.classList.add('bg-blue-600', 'hover:bg-blue-500');
+                    btn.classList.remove('bg-emerald-600', 'hover:bg-emerald-500');
+                    lucide.createIcons();
+                }, 2000);
+
+                lucide.createIcons();
+            }, 1500); // 1.5s delay to simulate network request
+        }
 
         // --- NAVIGATION ---
         function switchTab(tab) {
@@ -286,7 +564,6 @@
             const shareBtn = document.getElementById('share-btn');
             const mainFilters = document.getElementById('main-filters');
 
-            // Reset UI states
             document.querySelectorAll('.nav-btn').forEach(btn => {
                 btn.classList.add('opacity-50');
                 btn.classList.remove('scale-110');
@@ -294,7 +571,6 @@
                 btn.querySelector('span').classList.add('hidden');
             });
 
-            // Activate Tab
             const activeBtn = document.getElementById(`tab-${tab}`);
             activeBtn.classList.remove('opacity-50');
             activeBtn.classList.add('scale-110');
@@ -302,9 +578,7 @@
             activeBtn.querySelector('span').classList.remove('hidden');
 
             if (tab === 'list') {
-                // If we were in a sub-list, return to main view
                 if (currentListFilter !== 'main') closeList();
-                
                 listSection.classList.remove('hidden');
                 searchContainer.classList.remove('hidden');
                 foldersSection.classList.add('hidden');
@@ -316,7 +590,6 @@
                 searchContainer.classList.add('hidden');
                 foldersSection.classList.remove('hidden');
                 shareBtn.classList.add('hidden');
-                // Ensure header is reset
                 mainHeader.classList.remove('hidden');
                 listHeader.classList.add('hidden');
                 renderFolders();
@@ -329,13 +602,11 @@
             currentListFilter = listId;
             const listData = userLists.find(l => l.id === listId);
             
-            // Switch UI to List Mode
             document.getElementById('list-section').classList.remove('hidden');
             document.getElementById('folders-section').classList.add('hidden');
             document.getElementById('search-container').classList.add('hidden');
-            document.getElementById('main-filters').classList.add('hidden'); // Hide status filters in custom list view
+            document.getElementById('main-filters').classList.add('hidden');
 
-            // Header Update
             document.getElementById('main-header-text').classList.add('hidden');
             const listHeader = document.getElementById('list-header-text');
             listHeader.classList.remove('hidden');
@@ -350,9 +621,7 @@
             document.getElementById('list-header-text').classList.add('hidden');
             document.getElementById('main-header-text').classList.remove('hidden');
             document.getElementById('share-btn').classList.add('hidden');
-            
-            // Return to appropriate tab view
-            switchTab('list'); // Default back to main carnet
+            switchTab('list');
         }
 
         function createList() {
@@ -376,7 +645,6 @@
             event.stopPropagation();
             if(confirm("Supprimer cette liste et son contenu ?")) {
                 userLists = userLists.filter(l => l.id !== id);
-                // Move items back to main or delete them? Let's keep them in main but remove listId
                 restaurants.forEach(r => {
                     if(r.listId === id) r.listId = 'main';
                 });
@@ -392,13 +660,14 @@
             
             let text = `🍽️ *${listTitle}* - Les Restos de Matt's\n\n`;
             items.forEach(r => {
-                text += `• ${r.name} (${r.cuisine})\n`;
+                const stars = "★".repeat(r.rating) + "☆".repeat(5 - r.rating);
+                text += `• ${r.name} (${r.cuisine}) - ${stars}\n`;
             });
 
             navigator.clipboard.writeText(text).then(() => {
-                showNotice("Liste copiée !");
+                alert("Liste copiée dans le presse-papier !");
             }).catch(() => {
-                showNotice("Erreur de copie");
+                alert("Erreur de copie");
             });
         }
 
@@ -408,19 +677,9 @@
             const query = document.getElementById('search-input').value.toLowerCase();
 
             const filtered = restaurants.filter(r => {
-                // 1. Filter by List Context
-                const inList = currentListFilter === 'main' 
-                    ? true // Show all in Main Carnet? Or just those with 'main'? usually Main shows ALL.
-                    : r.listId === currentListFilter;
-
-                // 2. Filter by Status (Only in Main View)
-                const inStatus = currentListFilter !== 'main' 
-                    ? true 
-                    : (filterStatus === 'all' || r.status === filterStatus);
-                
-                // 3. Search
+                const inList = currentListFilter === 'main' ? true : r.listId === currentListFilter;
+                const inStatus = currentListFilter !== 'main' ? true : (filterStatus === 'all' || r.status === filterStatus);
                 const inSearch = r.name.toLowerCase().includes(query) || r.cuisine.toLowerCase().includes(query);
-
                 return inList && inStatus && inSearch;
             });
 
@@ -467,52 +726,155 @@
             return list ? list.title.substring(0, 8) : 'Liste';
         }
 
+        function renderAddRatingStars() {
+            const container = document.getElementById('new-resto-rating-container');
+            container.innerHTML = Array(5).fill(0).map((_, i) => `
+                <button onclick="setNewRestoRating(${i + 1})" class="star-btn transition-transform">
+                    <i data-lucide="star" class="w-4 h-4 ${i < newRestoRating ? 'fill-yellow-400 text-yellow-400' : 'fill-white/10 text-white/10'}"></i>
+                </button>
+            `).join('');
+            lucide.createIcons();
+        }
+
+        function setNewRestoRating(rating) {
+            newRestoRating = rating;
+            renderAddRatingStars();
+        }
+
         function addRestaurant() {
             const name = document.getElementById('new-resto-name').value;
             const cuisine = document.getElementById('new-resto-cuisine').value;
             const listId = document.getElementById('new-resto-list').value;
+            const note = document.getElementById('new-resto-note').value;
 
-            if (!name) { showNotice("Il faut un nom !"); return; }
+            if (!name) return alert("Le nom est obligatoire !");
 
-            restaurants.unshift({
+            const newResto = {
                 id: Date.now(),
-                name,
-                cuisine: cuisine || "Divers",
-                status: 'wishlist',
-                rating: 0,
+                name: name,
+                cuisine: cuisine || "Non spécifié",
+                status: "wishlist", // Default to wishlist
+                rating: newRestoRating,
+                note: note,
                 listId: listId,
-                image: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=600&q=80"
-            });
+                image: `https://source.unsplash.com/600x400/?restaurant,food&random=${Date.now()}` // Random Unsplash placeholder
+            };
 
+            restaurants.unshift(newResto);
+            renderRestaurants();
             toggleModal('modal-add-resto');
-            // If we are in the list we just added to, refresh, otherwise stay
-            if (currentView === 'list' && (currentListFilter === 'main' || currentListFilter === listId)) {
-                renderRestaurants();
-            } else if (currentView === 'folders' && listId !== 'main') {
-                renderFolders(); // Update counts
-            }
             
+            // Reset form
             document.getElementById('new-resto-name').value = '';
             document.getElementById('new-resto-cuisine').value = '';
-            showNotice("Adresse ajoutée !");
+            document.getElementById('new-resto-note').value = '';
+            document.getElementById('gmb-import-url').value = '';
+            newRestoRating = 0;
+            renderAddRatingStars();
         }
 
+        // --- DETAILS MODAL ---
+        function openRestoDetails(id) {
+            currentDetailId = id;
+            const resto = restaurants.find(r => r.id === id);
+            
+            document.getElementById('detail-image').src = resto.image;
+            document.getElementById('detail-name').innerText = resto.name;
+            document.getElementById('detail-note').value = resto.note || "";
+            
+            // Link GMB
+            const gmbBtn = document.getElementById('detail-gmb-link');
+            if(resto.gmbLink) {
+                gmbBtn.href = resto.gmbLink;
+                gmbBtn.classList.remove('hidden');
+            } else {
+                gmbBtn.classList.add('hidden');
+            }
+
+            // Tags
+            document.getElementById('detail-tags').innerHTML = `
+                <span class="text-[9px] font-bold bg-blue-500 text-white px-2 py-1 rounded-full uppercase">${resto.cuisine}</span>
+                ${resto.status === 'visited' ? '<span class="text-[9px] font-bold bg-emerald-500 text-white px-2 py-1 rounded-full uppercase">Visité</span>' : ''}
+            `;
+
+            renderDetailStars(resto.rating);
+            
+            // Update toggle button state
+            const statusBtn = document.getElementById('btn-toggle-status');
+            const icon = statusBtn.querySelector('i');
+            const text = statusBtn.querySelector('span');
+            
+            if(resto.status === 'visited') {
+                statusBtn.classList.add('bg-emerald-500/20', 'border-emerald-500/30', 'text-emerald-400');
+                statusBtn.classList.remove('bg-white/5');
+                text.innerText = "Déjà fait";
+            } else {
+                statusBtn.classList.remove('bg-emerald-500/20', 'border-emerald-500/30', 'text-emerald-400');
+                statusBtn.classList.add('bg-white/5');
+                text.innerText = "Marquer Fait";
+            }
+
+            toggleModal('modal-details');
+        }
+
+        function renderDetailStars(rating) {
+            const container = document.getElementById('detail-stars');
+            container.innerHTML = Array(5).fill(0).map((_, i) => `
+                <i onclick="updateRestoRating(${i + 1})" data-lucide="star" class="w-5 h-5 ${i < rating ? 'fill-yellow-400 text-yellow-400' : 'fill-white/10 text-white/10'} transition-transform active:scale-90"></i>
+            `).join('');
+            lucide.createIcons();
+        }
+
+        function updateRestoRating(newRating) {
+            const resto = restaurants.find(r => r.id === currentDetailId);
+            if(resto) {
+                resto.rating = newRating;
+                if(newRating > 0) resto.status = 'visited'; // Auto mark visited if rated
+                renderDetailStars(newRating);
+                renderRestaurants(); // Refresh background list
+                
+                // Re-open details to refresh visual state of "visited" button if needed
+                openRestoDetails(currentDetailId);
+            }
+        }
+
+        function updateRestoNote(newNote) {
+            const resto = restaurants.find(r => r.id === currentDetailId);
+            if(resto) resto.note = newNote;
+        }
+
+        function toggleStatusFromDetail() {
+            const resto = restaurants.find(r => r.id === currentDetailId);
+            if(resto) {
+                resto.status = resto.status === 'visited' ? 'wishlist' : 'visited';
+                renderRestaurants();
+                openRestoDetails(currentDetailId); // Refresh modal UI
+            }
+        }
+
+        function deleteRestoFromDetail() {
+            if(confirm("Supprimer ce resto ?")) {
+                restaurants = restaurants.filter(r => r.id !== currentDetailId);
+                renderRestaurants();
+                toggleModal('modal-details');
+            }
+        }
+
+        // --- FOLDERS LOGIC ---
         function renderFolders() {
-            const grid = document.getElementById('folders-grid');
-            grid.innerHTML = userLists.map(list => {
+            const container = document.getElementById('folders-grid');
+            container.innerHTML = userLists.map(list => {
                 const count = restaurants.filter(r => r.listId === list.id).length;
                 return `
-                    <div onclick="openList('${list.id}')" class="glass aspect-[4/3] p-5 flex flex-col justify-between group active:scale-95 transition-all hover:bg-white/10 cursor-pointer rounded-[24px] bg-[#161616] relative">
-                        <button onclick="deleteList('${list.id}', event)" class="absolute top-3 right-3 text-white/10 hover:text-red-400 transition-colors p-2">
-                            <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
-                        </button>
-                        <div class="w-10 h-10 rounded-2xl bg-white/5 flex items-center justify-center text-white/40 group-hover:text-blue-400 group-hover:bg-blue-500/10 transition-all">
-                            <i data-lucide="${list.icon}" class="w-5 h-5"></i>
+                    <div onclick="openList('${list.id}')" class="glass p-4 rounded-[20px] active:scale-95 transition-all relative group border border-white/5 hover:bg-white/10">
+                        ${list.id !== 'favs' && list.id !== 'date' && list.id !== 'biz' ? 
+                            `<button onclick="deleteList('${list.id}', event)" class="absolute top-2 right-2 text-white/20 hover:text-red-400 p-1"><i data-lucide="x" class="w-3 h-3"></i></button>` 
+                            : ''}
+                        <div class="bg-blue-500/20 w-10 h-10 rounded-full flex items-center justify-center mb-3 text-blue-400">
+                            <i data-lucide="${list.icon || 'folder'}" class="w-5 h-5"></i>
                         </div>
-                        <div>
-                            <h3 class="font-bold text-sm leading-tight mb-1 text-white pr-4 truncate">${list.title}</h3>
-                            <p class="text-[9px] text-white/30 font-bold uppercase tracking-widest">${count} Lieux</p>
-                        </div>
+                        <h3 class="font-bold text-sm text-white mb-0.5">${list.title}</h3>
+                        <p class="text-[10px] font-bold text-white/40 uppercase tracking-widest">${count} Adresses</p>
                     </div>
                 `;
             }).join('');
@@ -521,143 +883,54 @@
 
         function updateListSelect() {
             const select = document.getElementById('new-resto-list');
-            select.innerHTML = `<option value="main">Carnet Général</option>` + 
-                userLists.map(l => `<option value="${l.id}">${l.title}</option>`).join('');
-        }
-
-        // --- AI (FAST MODEL / SIMULATED) ---
-        function generateRecommendations() {
-            const btn = document.getElementById('ai-btn');
-            const section = document.getElementById('recommendations-section');
-            const recoList = document.getElementById('reco-list');
-
-            // UI Loading
-            btn.classList.add('animate-spin', 'text-white');
-            section.classList.remove('hidden');
-            recoList.innerHTML = `
-                <div class="flex items-center gap-3 px-4 py-8 text-white/30 animate-pulse">
-                    <i data-lucide="loader" class="w-4 h-4 animate-spin"></i>
-                    <span class="text-[10px] font-bold uppercase tracking-widest">Recherche en cours...</span>
-                </div>`;
-            lucide.createIcons();
-
-            // Simulate Network Delay for "Fast Model" feel (500ms)
-            setTimeout(() => {
-                // Select 3 random distinct items from database
-                const shuffled = aiDatabase.sort(() => 0.5 - Math.random());
-                const suggestions = shuffled.slice(0, 3);
-                
-                recoList.innerHTML = suggestions.map(rec => `
-                    <div class="min-w-[260px] glass p-5 rounded-[24px] border-l-2 border-yellow-500 bg-[#1a1a1a] snap-center animate-in">
-                        <div class="flex justify-between items-start mb-2">
-                            <h3 class="font-bold text-sm text-white">${rec.name}</h3>
-                            <span class="text-[8px] font-black bg-white/10 px-2 py-1 rounded text-white/60 uppercase">${rec.cuisine}</span>
-                        </div>
-                        <p class="text-[10px] text-white/40 mb-4 italic leading-relaxed">"${rec.reason}"</p>
-                        <button onclick="addRecommendationToCarnet('${rec.name.replace(/'/g, "\\'")}', '${rec.cuisine}')" class="w-full py-2.5 rounded-xl bg-yellow-500 text-black text-[10px] font-black uppercase tracking-widest hover:bg-yellow-400 active:scale-95 transition-all flex justify-center items-center gap-2">
-                            <i data-lucide="plus" class="w-3 h-3"></i> Ajouter
-                        </button>
-                    </div>
-                `).join('');
-                lucide.createIcons();
-                btn.classList.remove('animate-spin', 'text-white');
-            }, 600);
-        }
-
-        function addRecommendationToCarnet(name, cuisine) {
-            restaurants.unshift({
-                id: Date.now(),
-                name: name,
-                cuisine: cuisine,
-                status: 'wishlist',
-                rating: 0,
-                listId: currentListFilter, // Add to current context
-                image: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=600&q=80"
+            // Keep default option, clear others
+            select.innerHTML = '<option value="main">Ajouter au Carnet Général</option>';
+            userLists.forEach(list => {
+                const option = document.createElement('option');
+                option.value = list.id;
+                option.innerText = list.title;
+                select.appendChild(option);
             });
-            renderRestaurants();
-            showNotice(`${name} ajouté !`);
         }
 
         function closeRecommendations() {
             document.getElementById('recommendations-section').classList.add('hidden');
         }
 
-        // --- UTILS & MODALS ---
-        function toggleModal(id) {
-            const modal = document.getElementById(id);
-            modal.classList.toggle('hidden');
+        function addRecommended(name, cuisine) {
+            document.getElementById('new-resto-name').value = name;
+            document.getElementById('new-resto-cuisine').value = cuisine;
+            toggleModal('modal-add-resto');
         }
 
-        function openRestoDetails(id) {
-            currentDetailId = id;
-            const resto = restaurants.find(r => r.id === id);
-            if (!resto) return;
-
-            document.getElementById('detail-image').src = resto.image;
-            document.getElementById('detail-name').innerText = resto.name;
-            document.getElementById('detail-tags').innerHTML = `<span class="px-2 py-1 bg-white/20 backdrop-blur-md rounded-md text-[9px] font-bold uppercase tracking-widest text-white">${resto.cuisine}</span>`;
-            
-            const starsContainer = document.getElementById('detail-stars');
-            starsContainer.innerHTML = Array(5).fill(0).map((_, i) => 
-                `<i data-lucide="star" class="w-3 h-3 ${i < resto.rating ? 'fill-yellow-400' : 'fill-white/10 text-white/20'}"></i>`
-            ).join('');
-
-            const btnStatus = document.getElementById('btn-toggle-status');
-            if (resto.status === 'visited') {
-                btnStatus.innerHTML = `<i data-lucide="bookmark" class="w-5 h-5 text-white"></i><span class="text-[10px] font-bold uppercase tracking-widest text-white">À tester</span>`;
+        // --- UTILS ---
+        function toggleModal(modalId) {
+            const modal = document.getElementById(modalId);
+            if (modal.classList.contains('hidden')) {
+                modal.classList.remove('hidden');
             } else {
-                btnStatus.innerHTML = `<i data-lucide="check-circle" class="w-5 h-5 text-emerald-400"></i><span class="text-[10px] font-bold uppercase tracking-widest text-emerald-400">Marquer Fait</span>`;
-            }
-
-            lucide.createIcons();
-            toggleModal('modal-details');
-        }
-
-        function toggleStatusFromDetail() {
-            const resto = restaurants.find(r => r.id === currentDetailId);
-            if (resto) {
-                resto.status = resto.status === 'visited' ? 'wishlist' : 'visited';
-                openRestoDetails(currentDetailId);
-                renderRestaurants(); // Refresh bg list
-                showNotice(resto.status === 'visited' ? "Marqué comme visité" : "Ajouté à la wishlist");
+                modal.classList.add('hidden');
             }
         }
 
-        function deleteRestoFromDetail() {
-            if(confirm('Supprimer ce restaurant ?')) {
-                restaurants = restaurants.filter(r => r.id !== currentDetailId);
-                toggleModal('modal-details');
-                renderRestaurants();
-                if(currentView === 'folders') renderFolders();
-                showNotice("Restaurant supprimé");
-            }
-        }
-
-        function setFilter(status) {
-            filterStatus = status;
+        function setFilter(filter) {
+            filterStatus = filter;
             document.querySelectorAll('.filter-btn').forEach(btn => {
-                if(btn.dataset.filter === status) {
-                    btn.className = "filter-btn text-[9px] font-bold px-3 py-1 rounded-full transition-all bg-white text-black shadow-sm";
+                if(btn.dataset.filter === filter) {
+                    btn.classList.remove('text-white/40', 'hover:text-white', 'hover:bg-white/10');
+                    btn.classList.add('bg-white', 'text-black', 'shadow-sm');
                 } else {
-                    btn.className = "filter-btn text-[9px] font-bold px-3 py-1 rounded-full transition-all text-white/40 hover:text-white hover:bg-white/10";
+                    btn.classList.add('text-white/40', 'hover:text-white', 'hover:bg-white/10');
+                    btn.classList.remove('bg-white', 'text-black', 'shadow-sm');
                 }
             });
             renderRestaurants();
         }
 
         function showNotice(msg) {
-            const existing = document.querySelector('.toast-notice');
-            if(existing) existing.remove();
-
-            const toast = document.createElement('div');
-            toast.className = "toast-notice fixed top-6 left-1/2 -translate-x-1/2 z-[200] px-5 py-2.5 bg-white text-black rounded-full shadow-[0_10px_40px_rgba(0,0,0,0.5)] flex items-center gap-2 animate-in";
-            toast.innerHTML = `<i data-lucide="info" class="w-3 h-3"></i><span class="text-[10px] font-black uppercase tracking-widest">${msg}</span>`;
-            document.body.appendChild(toast);
-            lucide.createIcons();
-            setTimeout(() => {
-                toast.style.opacity = '0';
-                setTimeout(() => toast.remove(), 300);
-            }, 2500);
+            // Simple alert replacement could go here
+            // For now standard alert
+            // alert(msg);
         }
     </script>
 </body>
