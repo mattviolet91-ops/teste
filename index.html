@@ -3,64 +3,80 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Les Restos de Matt’s - Paris de Luxe 🌟</title>
+    <title>Les Resto's de Matt's - Blue Edition 💎</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,900;1,900&family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800;900&family=Playfair+Display:ital,wght@0,700;1,700&display=swap" rel="stylesheet">
     
     <!-- SDK Firebase -->
     <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js" type="module"></script>
     <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js" type="module"></script>
     <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js" type="module"></script>
 
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'neon-blue': '#00f3ff',
+                        'deep-blue': '#0066ff',
+                        'dark-bg': '#030712',
+                    },
+                    fontFamily: {
+                        sans: ['Outfit', 'sans-serif'],
+                        serif: ['Playfair Display', 'serif'],
+                    }
+                }
+            }
+        }
+    </script>
+
     <style>
         :root {
-            --gold: linear-gradient(135deg, #d4af37 0%, #f9e29c 50%, #b8860b 100%);
-            --onyx: #0a0a0b;
+            --blue-gradient: linear-gradient(135deg, #00f3ff 0%, #0066ff 100%);
+            --glass-border: rgba(255, 255, 255, 0.08);
         }
         body {
-            font-family: 'Inter', sans-serif;
-            background: var(--onyx);
+            background: #02040a;
             color: white;
             margin: 0;
             overflow: hidden;
+            font-family: 'Outfit', sans-serif;
         }
-        .serif { font-family: 'Playfair Display', serif; }
         
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         
         .glass { 
-            background: rgba(255, 255, 255, 0.03); 
-            backdrop-filter: blur(25px); 
-            -webkit-backdrop-filter: blur(25px);
-            border: 1px solid rgba(255, 255, 255, 0.08); 
+            background: rgba(10, 20, 40, 0.6); 
+            backdrop-filter: blur(20px); 
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(0, 243, 255, 0.1); 
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.2);
         }
         
-        .gold-gradient {
-            background: var(--gold);
+        .text-gradient {
+            background: var(--blue-gradient);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
         }
 
-        .gold-border { border: 1px solid rgba(212, 175, 55, 0.3); }
-
         @keyframes slideUp { 
-            from { opacity: 0; transform: translateY(20px); } 
-            to { opacity: 1; transform: translateY(0); } 
+            from { opacity: 0; transform: translateY(30px) scale(0.95); } 
+            to { opacity: 1; transform: translateY(0) scale(1); } 
         }
-        .animate-up { animation: slideUp 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }
+        .animate-up { animation: slideUp 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
         
         .shimmer {
-            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.05), transparent);
+            background: linear-gradient(110deg, rgba(255,255,255,0.01) 30%, rgba(255,255,255,0.05) 50%, rgba(255,255,255,0.01) 70%);
             background-size: 200% 100%;
-            animation: shimmer 2s infinite;
+            animation: shimmer 3s infinite;
         }
         @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
 
         .loader {
-            border: 2px solid rgba(255,255,255,0.1);
-            border-left-color: #d4af37;
+            border: 2px solid rgba(0, 243, 255, 0.1);
+            border-left-color: #00f3ff;
             border-radius: 50%;
             width: 20px;
             height: 20px;
@@ -68,142 +84,209 @@
         }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
-        .tab-active { color: white; opacity: 1; }
-        .tab-active .icon-bg { background: rgba(212, 175, 55, 0.2); border-color: rgba(212, 175, 55, 0.4); color: #f9e29c; }
+        .nav-item.active { color: #00f3ff; text-shadow: 0 0 20px rgba(0, 243, 255, 0.5); }
+        .nav-item.active i { transform: translateY(-4px); }
+
+        /* Custom TextArea for Reviews */
+        textarea.review-box {
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #e2e8f0;
+            font-family: 'Outfit', sans-serif;
+            font-weight: 300;
+            line-height: 1.6;
+            resize: none;
+        }
+        textarea.review-box:focus {
+            outline: none;
+            border-color: #00f3ff;
+            background: rgba(0, 0, 0, 0.4);
+        }
     </style>
 </head>
 <body>
-    <div id="app" class="relative w-full h-screen overflow-hidden bg-[#050505]">
+    <div id="app" class="relative w-full h-screen overflow-hidden bg-[#02040a]">
         <!-- Background Ornements -->
-        <div class="absolute inset-0 pointer-events-none">
-            <div class="absolute top-[-15%] right-[-10%] w-[80%] h-[60%] bg-amber-900/10 blur-[120px] rounded-full"></div>
-            <div class="absolute bottom-[-10%] left-[-5%] w-[50%] h-[50%] bg-blue-900/10 blur-[120px] rounded-full"></div>
+        <div class="absolute inset-0 pointer-events-none overflow-hidden">
+            <div class="absolute top-[-20%] left-[-20%] w-[90%] h-[70%] bg-blue-600/10 blur-[150px] rounded-full"></div>
+            <div class="absolute bottom-[-10%] right-[-10%] w-[80%] h-[60%] bg-cyan-500/10 blur-[150px] rounded-full"></div>
         </div>
 
-        <div class="relative z-10 flex flex-col h-full max-w-lg mx-auto border-x border-white/5 shadow-2xl">
+        <div class="relative z-10 flex flex-col h-full max-w-lg mx-auto border-x border-white/5 shadow-2xl bg-black/20">
             <!-- Header -->
-            <header class="pt-16 pb-8 px-8 flex justify-between items-end shrink-0">
+            <header class="pt-14 pb-6 px-8 flex justify-between items-start shrink-0">
                 <div>
-                    <h1 class="text-4xl font-black italic tracking-tighter uppercase leading-none serif gold-gradient">
-                        Matt's<br>Selection
+                    <h1 class="text-5xl font-black italic tracking-tighter uppercase leading-[0.85] font-serif text-white">
+                        <span class="text-transparent bg-clip-text bg-gradient-to-r from-white to-slate-400">Les</span><br>
+                        <span class="text-gradient drop-shadow-lg">Resto's</span><br>
+                        <span class="text-lg tracking-[0.5em] font-sans not-italic font-bold text-white/40 block mt-2 ml-1">DE MATT'S</span>
                     </h1>
-                    <div class="flex items-center gap-2 mt-3">
-                        <span class="text-[9px] font-bold text-white/30 uppercase tracking-[0.4em]">Paris de Luxe</span>
-                        <div class="h-px w-8 bg-amber-500/30"></div>
-                        <span id="sync-status" class="text-[8px] font-bold text-amber-500/60 uppercase">Cloud Sync...</span>
+                    <div class="flex items-center gap-2 mt-4">
+                        <div class="h-1.5 w-1.5 rounded-full bg-cyan-400 animate-pulse"></div>
+                        <span id="sync-status" class="text-[9px] font-bold text-cyan-400/80 uppercase tracking-wider">Connexion...</span>
                     </div>
                 </div>
-                <button onclick="window.toggleModal('modal-add')" class="p-4 bg-white text-black rounded-full shadow-2xl active:scale-90 transition-transform">
-                    <i data-lucide="plus" class="w-6 h-6"></i>
+                <button onclick="window.toggleModal('modal-add')" class="group relative p-4 rounded-2xl bg-gradient-to-br from-cyan-500 to-blue-600 shadow-[0_0_30px_rgba(0,243,255,0.3)] hover:shadow-[0_0_50px_rgba(0,243,255,0.5)] active:scale-95 transition-all duration-300">
+                    <i data-lucide="plus" class="w-6 h-6 text-white group-hover:rotate-90 transition-transform duration-300"></i>
                 </button>
             </header>
 
             <!-- Barre de Recherche IA -->
-            <div class="px-8 mb-8 shrink-0">
+            <div class="px-8 mb-6 shrink-0 z-20">
                 <div class="relative group">
-                    <input 
-                        type="text" 
-                        id="ai-search-input"
-                        placeholder="Nom d'un restaurant à Paris..."
-                        class="w-full bg-white/[0.03] border border-white/10 rounded-2xl py-5 pl-6 pr-16 text-sm font-medium focus:outline-none focus:border-amber-500/40 transition-all placeholder:text-white/20"
-                    >
-                    <button 
-                        onclick="window.importWithAI()" 
-                        id="btn-ai-import"
-                        class="absolute right-2.5 top-1/2 -translate-y-1/2 p-3 bg-amber-500/10 text-amber-500 rounded-xl hover:bg-amber-500 hover:text-black transition-all"
-                    >
-                        <i data-lucide="sparkles" class="w-5 h-5"></i>
-                    </button>
+                    <div class="absolute -inset-0.5 bg-gradient-to-r from-cyan-500 to-blue-600 rounded-2xl opacity-20 group-hover:opacity-40 transition duration-500 blur"></div>
+                    <div class="relative flex items-center bg-[#0a101f] rounded-2xl border border-white/10 p-1">
+                        <input 
+                            type="text" 
+                            id="ai-search-input"
+                            placeholder="Nom du resto ou Lien Google Maps..."
+                            class="w-full bg-transparent border-none text-white px-4 py-3 text-sm font-medium focus:outline-none placeholder:text-white/20"
+                        >
+                        <button 
+                            onclick="window.importWithAI()" 
+                            id="btn-ai-import"
+                            class="p-3 m-1 bg-cyan-500/10 text-cyan-400 rounded-xl hover:bg-cyan-500 hover:text-white transition-all duration-300"
+                        >
+                            <i data-lucide="sparkles" class="w-4 h-4"></i>
+                        </button>
+                    </div>
                 </div>
             </div>
 
             <!-- Zone de Contenu -->
-            <main id="content-area" class="flex-1 overflow-y-auto px-8 pb-32 no-scrollbar">
+            <main id="content-area" class="flex-1 overflow-y-auto px-8 pb-32 no-scrollbar scroll-smooth">
                 <!-- Filtres -->
-                <div id="filter-bar" class="flex items-center justify-between mb-6 sticky top-0 z-20 py-2 bg-[#050505]/80 backdrop-blur-md">
-                    <h2 class="text-[10px] font-black uppercase tracking-widest text-white/30">Adresses Enregistrées</h2>
-                    <div class="flex gap-2">
-                        <button onclick="window.setFilter('all')" class="filter-btn text-[9px] font-bold px-3 py-1.5 rounded-full glass" data-filter="all">TOUS</button>
-                        <button onclick="window.setFilter('wishlist')" class="filter-btn text-[9px] font-bold px-3 py-1.5 rounded-full text-white/30" data-filter="wishlist">WISH</button>
-                        <button onclick="window.setFilter('visited')" class="filter-btn text-[9px] font-bold px-3 py-1.5 rounded-full text-white/30" data-filter="visited">FAIT</button>
+                <div id="filter-bar" class="flex items-center justify-between mb-6 sticky top-0 z-20 py-4 bg-[#02040a]/95 backdrop-blur-xl border-b border-white/5">
+                    <div class="flex gap-2 p-1 bg-white/5 rounded-full">
+                        <button onclick="window.setFilter('all')" class="filter-btn text-[10px] font-bold px-4 py-2 rounded-full bg-white/10 text-white transition-all shadow-lg" data-filter="all">TOUS</button>
+                        <button onclick="window.setFilter('wishlist')" class="filter-btn text-[10px] font-bold px-4 py-2 rounded-full text-white/40 hover:text-white transition-all" data-filter="wishlist">À FAIRE</button>
+                        <button onclick="window.setFilter('visited')" class="filter-btn text-[10px] font-bold px-4 py-2 rounded-full text-white/40 hover:text-white transition-all" data-filter="visited">VISITÉ</button>
                     </div>
                 </div>
 
                 <!-- Grille des Restaurants -->
-                <div id="restaurants-grid" class="space-y-4 min-h-[40vh]">
-                    <div class="skeleton-list space-y-4">
-                        <div class="h-32 glass rounded-3xl shimmer"></div>
-                        <div class="h-32 glass rounded-3xl shimmer"></div>
+                <div id="restaurants-grid" class="space-y-5 min-h-[40vh]">
+                    <!-- Skeleton Loader -->
+                    <div class="skeleton-list space-y-4 opacity-50">
+                        <div class="h-28 glass rounded-[20px] shimmer border-none"></div>
+                        <div class="h-28 glass rounded-[20px] shimmer border-none"></div>
                     </div>
                 </div>
 
-                <!-- Collections -->
-                <div id="collections-view" class="hidden space-y-8 animate-up">
+                <!-- Collections (Vue alternative) -->
+                <div id="collections-view" class="hidden space-y-8 animate-up pt-4">
                     <div class="flex justify-between items-center">
-                        <h2 class="text-[10px] font-black uppercase tracking-widest text-white/30">Mes Dossiers Or</h2>
-                        <button class="text-[10px] font-bold text-amber-500 underline uppercase">Nouveau</button>
+                        <h2 class="text-xs font-black uppercase tracking-widest text-cyan-400">Dossiers Privés</h2>
                     </div>
                     <div id="collections-grid" class="grid grid-cols-2 gap-4"></div>
                 </div>
             </main>
 
             <!-- Navigation Basse -->
-            <nav class="absolute bottom-10 left-8 right-8 h-20 glass rounded-[2.5rem] flex items-center justify-around px-6 z-40 gold-border shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
-                <button onclick="window.switchView('main')" id="nav-main" class="tab-active flex flex-col items-center gap-1 group">
-                    <div class="icon-bg p-3 rounded-2xl border border-transparent transition-all">
-                        <i data-lucide="compass" class="w-6 h-6"></i>
-                    </div>
-                    <span class="text-[8px] font-black tracking-[0.2em] uppercase">Carnet</span>
+            <nav class="absolute bottom-8 left-6 right-6 h-[72px] glass rounded-[24px] flex items-center justify-around px-2 z-40 shadow-[0_10px_40px_rgba(0,0,0,0.5)] bg-[#050b18]/80">
+                <button onclick="window.switchView('main')" id="nav-main" class="nav-item active flex-1 h-full flex flex-col items-center justify-center gap-1 transition-all duration-300 group">
+                    <i data-lucide="compass" class="w-6 h-6 transition-transform duration-300 group-active:scale-90"></i>
+                    <span class="text-[9px] font-bold tracking-widest uppercase opacity-60">Explorer</span>
                 </button>
-                <div class="h-8 w-px bg-white/10"></div>
-                <button onclick="window.switchView('collections')" id="nav-collections" class="flex flex-col items-center gap-1 group opacity-40">
-                    <div class="icon-bg p-3 rounded-2xl border border-transparent transition-all">
-                        <i data-lucide="crown" class="w-6 h-6"></i>
-                    </div>
-                    <span class="text-[8px] font-black tracking-[0.2em] uppercase">Elite</span>
+                <div class="w-px h-8 bg-gradient-to-b from-transparent via-white/10 to-transparent"></div>
+                <button onclick="window.switchView('collections')" id="nav-collections" class="nav-item flex-1 h-full flex flex-col items-center justify-center gap-1 transition-all duration-300 text-white/30 group hover:text-white/60">
+                    <i data-lucide="layers" class="w-6 h-6 transition-transform duration-300 group-active:scale-90"></i>
+                    <span class="text-[9px] font-bold tracking-widest uppercase opacity-60">Listes</span>
+                </button>
+                <div class="w-px h-8 bg-gradient-to-b from-transparent via-white/10 to-transparent"></div>
+                 <button class="nav-item flex-1 h-full flex flex-col items-center justify-center gap-1 transition-all duration-300 text-white/30 group hover:text-white/60 opacity-50" title="Project on Github">
+                    <i data-lucide="github" class="w-6 h-6 transition-transform duration-300 group-active:scale-90"></i>
+                    <span class="text-[9px] font-bold tracking-widest uppercase opacity-60">Code</span>
                 </button>
             </nav>
         </div>
 
-        <!-- Toast -->
-        <div id="toast" class="fixed bottom-36 left-1/2 -translate-x-1/2 glass px-8 py-4 rounded-full border border-amber-500/30 text-[10px] font-black uppercase tracking-widest text-amber-400 z-[300] shadow-2xl opacity-0 transition-all transform translate-y-10 pointer-events-none">
-            Opération réussie
+        <!-- Toast Notification -->
+        <div id="toast" class="fixed top-10 left-1/2 -translate-x-1/2 glass px-6 py-3 rounded-full border border-cyan-500/30 flex items-center gap-3 z-[300] shadow-[0_0_30px_rgba(0,243,255,0.2)] opacity-0 transition-all transform -translate-y-10 pointer-events-none">
+            <div class="w-2 h-2 rounded-full bg-cyan-400 animate-pulse"></div>
+            <span class="text-xs font-bold text-cyan-100 uppercase tracking-wider" id="toast-msg">Notification</span>
         </div>
 
-        <!-- MODAL: AJOUT -->
-        <div id="modal-add" class="hidden fixed inset-0 z-[200] flex items-center justify-center p-8 bg-black/90 backdrop-blur-xl" onclick="if(event.target === this) window.toggleModal('modal-add')">
-            <div class="glass w-full max-w-sm p-8 space-y-6 rounded-[3rem] gold-border animate-up">
-                <h2 class="text-2xl font-black italic serif gold-gradient">Nouvelle Entrée</h2>
-                <div class="space-y-4">
-                    <input id="in-name" type="text" placeholder="Nom du palace" class="w-full bg-white/5 border border-white/10 rounded-2xl py-4 px-6 text-sm">
-                    <input id="in-cuisine" type="text" placeholder="Cuisine (ex: Gastronomie)" class="w-full bg-white/5 border border-white/10 rounded-2xl py-4 px-6 text-sm">
+        <!-- MODAL: AJOUT MANUEL -->
+        <div id="modal-add" class="hidden fixed inset-0 z-[200] flex items-center justify-center p-6 bg-[#02040a]/80 backdrop-blur-xl" onclick="if(event.target === this) window.toggleModal('modal-add')">
+            <div class="glass w-full max-w-sm p-8 space-y-6 rounded-[32px] border border-white/10 shadow-2xl animate-up bg-[#080f25]">
+                <div class="text-center">
+                    <h2 class="text-3xl font-black italic serif text-white mb-1">Nouvelle Pépite</h2>
+                    <p class="text-xs text-cyan-400 uppercase tracking-widest">Ajouter à la liste</p>
                 </div>
-                <button onclick="window.manualSave()" class="w-full bg-white text-black py-5 rounded-2xl font-black uppercase tracking-widest text-[10px]">Sauvegarder</button>
+                <div class="space-y-4">
+                    <div class="group">
+                        <label class="text-[10px] uppercase font-bold text-white/30 ml-3 mb-1 block">Nom du lieu</label>
+                        <input id="in-name" type="text" class="w-full bg-white/5 border border-white/10 focus:border-cyan-500/50 rounded-xl py-4 px-5 text-sm transition-all focus:bg-white/10 outline-none text-white placeholder:text-white/20">
+                    </div>
+                    <div class="group">
+                        <label class="text-[10px] uppercase font-bold text-white/30 ml-3 mb-1 block">Type de cuisine</label>
+                        <input id="in-cuisine" type="text" placeholder="ex: Italien, Fusion..." class="w-full bg-white/5 border border-white/10 focus:border-cyan-500/50 rounded-xl py-4 px-5 text-sm transition-all focus:bg-white/10 outline-none text-white placeholder:text-white/20">
+                    </div>
+                </div>
+                <button onclick="window.manualSave()" class="w-full bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white py-5 rounded-xl font-bold uppercase tracking-widest text-xs shadow-lg shadow-blue-900/50 transition-all transform active:scale-95">Sauvegarder</button>
+            </div>
+        </div>
+
+        <!-- MODAL: CHOIX IA -->
+        <div id="modal-ai-choice" class="hidden fixed inset-0 z-[250] flex items-center justify-center p-6 bg-[#02040a]/95 backdrop-blur-xl" onclick="if(event.target === this) window.toggleModal('modal-ai-choice')">
+            <div class="glass w-full max-w-md p-6 rounded-[32px] border border-cyan-500/20 shadow-2xl animate-up bg-[#080f25] flex flex-col max-h-[85vh]">
+                <div class="flex justify-between items-center mb-6 px-2">
+                    <div>
+                        <h2 class="text-2xl font-black italic serif text-white">Suggestions IA</h2>
+                        <p class="text-[10px] text-cyan-400 uppercase tracking-wider font-bold">GMB & Recos</p>
+                    </div>
+                    <button onclick="window.toggleModal('modal-ai-choice')" class="p-2 bg-white/5 rounded-full hover:bg-white/10 text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
+                </div>
+                
+                <div id="ai-results-container" class="space-y-3 overflow-y-auto flex-1 no-scrollbar mb-4">
+                    <!-- Results injected here -->
+                </div>
+
+                <button onclick="window.importWithAI()" id="btn-refresh-ai" class="w-full py-4 rounded-xl border border-cyan-500/30 text-cyan-400 font-bold uppercase tracking-widest text-[10px] hover:bg-cyan-500/10 active:bg-cyan-500/20 transition-colors flex items-center justify-center gap-2 group">
+                    <i data-lucide="refresh-cw" class="w-4 h-4 group-hover:rotate-180 transition-transform duration-500"></i>
+                    Rafraîchir les propositions
+                </button>
             </div>
         </div>
 
         <!-- MODAL: DETAILS -->
-        <div id="modal-details" class="hidden fixed inset-0 z-[200] flex items-end sm:items-center justify-center bg-black/95 backdrop-blur-md" onclick="if(event.target === this) window.toggleModal('modal-details')">
-            <div class="glass w-full max-w-sm bg-[#080808] rounded-t-[3.5rem] sm:rounded-[3.5rem] border border-white/10 overflow-hidden animate-up">
-                <div class="h-72 relative">
+        <div id="modal-details" class="hidden fixed inset-0 z-[200] flex items-end sm:items-center justify-center bg-[#02040a]/90 backdrop-blur-md" onclick="if(event.target === this) window.toggleModal('modal-details')">
+            <div class="glass w-full max-w-sm bg-[#080f25] rounded-t-[40px] sm:rounded-[40px] border border-white/10 overflow-hidden animate-up shadow-[0_-20px_60px_rgba(0,0,0,0.8)]">
+                <div class="h-64 relative">
                     <img id="det-img" src="" class="w-full h-full object-cover">
-                    <div class="absolute inset-0 bg-gradient-to-t from-[#080808] via-transparent"></div>
-                    <button onclick="window.toggleModal('modal-details')" class="absolute top-8 right-8 p-3 bg-black/50 rounded-full text-white/50 backdrop-blur-md hover:text-white transition-colors">
+                    <div class="absolute inset-0 bg-gradient-to-t from-[#080f25] via-[#080f25]/20 to-transparent"></div>
+                    <button onclick="window.toggleModal('modal-details')" class="absolute top-6 right-6 w-10 h-10 flex items-center justify-center bg-black/40 rounded-full text-white/70 backdrop-blur-md hover:bg-white hover:text-black transition-all">
                         <i data-lucide="x" class="w-5 h-5"></i>
                     </button>
-                    <div class="absolute bottom-8 left-10 pr-10">
-                        <span id="det-tag" class="text-[9px] font-black uppercase tracking-[0.2em] bg-amber-500 text-black px-4 py-1.5 rounded-full mb-4 inline-block"></span>
-                        <h2 id="det-name" class="text-4xl font-black italic serif gold-gradient leading-tight"></h2>
+                    <div class="absolute bottom-0 left-0 right-0 p-8 pb-6 bg-gradient-to-t from-[#080f25] to-transparent pt-20">
+                        <div class="flex justify-between items-end">
+                            <div>
+                                <span id="det-tag" class="text-[9px] font-black uppercase tracking-[0.2em] text-cyan-400 border border-cyan-500/30 px-3 py-1 rounded-full mb-3 inline-block backdrop-blur-sm"></span>
+                                <h2 id="det-name" class="text-3xl font-black italic serif text-white leading-[0.95] mb-2 drop-shadow-lg"></h2>
+                            </div>
+                        </div>
                     </div>
                 </div>
-                <div class="p-10 space-y-10">
-                    <div class="space-y-3">
-                        <p class="text-[10px] font-bold text-white/20 uppercase tracking-[0.3em]">Critique Matt's Selection</p>
-                        <p id="det-note" class="text-base text-white/70 leading-relaxed italic font-light"></p>
+                <div class="px-8 pb-10 space-y-6 bg-[#080f25]">
+                    <!-- Rating Interactive -->
+                    <div class="flex items-center justify-between p-4 bg-white/5 rounded-2xl">
+                        <span class="text-[10px] font-bold text-white/40 uppercase tracking-widest">Ma Note</span>
+                        <div class="flex items-center gap-2" id="det-stars-interactive"></div>
                     </div>
-                    <div class="grid grid-cols-2 gap-4">
-                        <button onclick="window.deleteRecord()" class="py-5 rounded-2xl border border-red-500/20 text-[10px] font-black uppercase tracking-widest text-red-500/60 hover:bg-red-500/10">Supprimer</button>
-                        <button onclick="window.toggleVisited()" id="det-status-btn" class="py-5 rounded-2xl bg-white text-black text-[10px] font-black uppercase tracking-widest">Marquer Fait</button>
+
+                    <!-- Editable Review -->
+                    <div class="space-y-2">
+                        <div class="flex justify-between items-center">
+                            <p class="text-[10px] font-bold text-blue-400/50 uppercase tracking-[0.3em]">Journal de bord</p>
+                            <span class="text-[8px] text-white/20 italic" id="save-status">Enregistré</span>
+                        </div>
+                        <textarea id="det-note-input" class="review-box w-full h-24 p-4 rounded-2xl text-sm" placeholder="Qu'as-tu pensé de ce lieu ?"></textarea>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3 pt-2">
+                        <button onclick="window.deleteRecord()" class="py-4 rounded-xl border border-red-500/20 text-[10px] font-black uppercase tracking-widest text-red-400 hover:bg-red-500/10 transition-colors">Supprimer</button>
+                        <button onclick="window.toggleVisited()" id="det-status-btn" class="py-4 rounded-xl bg-white text-black text-[10px] font-black uppercase tracking-widest shadow-[0_0_20px_rgba(255,255,255,0.2)] hover:scale-105 transition-transform">Marquer Fait</button>
                     </div>
                 </div>
             </div>
@@ -227,6 +310,7 @@
         let restaurants = [];
         let filter = 'all';
         let currentDetailId = null;
+        let currentAiSuggestions = [];
 
         // AUTH & SYNC (RULE 3)
         const initCloud = async () => {
@@ -238,14 +322,15 @@
                 }
             } catch (err) {
                 console.error("Auth Error", err);
-                document.getElementById('sync-status').innerText = "Offline Mode";
+                document.getElementById('sync-status').innerText = "Hors ligne";
+                document.getElementById('sync-status').classList.add('text-red-500');
             }
         };
 
         onAuthStateChanged(auth, (u) => {
             user = u;
             if (user) {
-                document.getElementById('sync-status').innerText = "Cloud Active ✨";
+                document.getElementById('sync-status').innerText = "Mémoire Active 🧠";
                 startSync();
             }
         });
@@ -255,15 +340,20 @@
             const q = collection(db, 'artifacts', appId, 'public', 'data', 'restaurants');
             onSnapshot(q, (snapshot) => {
                 restaurants = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                // Tri par date décroissante
                 restaurants.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
                 window.render();
+                // Refresh modal if open
+                if(currentDetailId && !document.getElementById('modal-details').classList.contains('hidden')) {
+                   // Optional: refresh details live, but avoid overwriting user input
+                }
             }, (error) => {
                 console.error("Sync Error", error);
-                showToast("Erreur de synchronisation Cloud");
+                showToast("Erreur de synchronisation");
             });
         };
 
-        // EXPOSITION DES FONCTIONS AU SCOPE GLOBAL
+        // UI & LOGIC
         window.render = () => {
             const grid = document.getElementById('restaurants-grid');
             const searchVal = document.getElementById('ai-search-input').value.toLowerCase();
@@ -275,25 +365,27 @@
             });
 
             if (filtered.length === 0 && restaurants.length > 0) {
-                grid.innerHTML = `<div class="py-20 text-center opacity-20 text-[10px] uppercase font-black tracking-widest">Aucun résultat trouvé</div>`;
+                grid.innerHTML = `<div class="py-20 text-center opacity-30 text-[10px] uppercase font-bold tracking-widest text-cyan-200">Aucun résultat dans cette zone</div>`;
+            } else if (restaurants.length === 0) {
+                 grid.innerHTML = `<div class="py-20 text-center opacity-30 text-[10px] uppercase font-bold tracking-widest text-cyan-200">Ta liste est vide</div>`;
             } else {
                 grid.innerHTML = filtered.map(r => `
-                    <div onclick="window.openDetails('${r.id}')" class="glass relative overflow-hidden rounded-[2rem] group cursor-pointer active:scale-[0.98] transition-all bg-[#0d0d0d] animate-up">
-                        <div class="flex h-32">
-                            <div class="w-32 h-full overflow-hidden shrink-0">
-                                <img src="${r.image}" class="w-full h-full object-cover grayscale-[0.2] group-hover:grayscale-0 group-hover:scale-110 transition-all duration-1000">
+                    <div onclick="window.openDetails('${r.id}')" class="glass relative overflow-hidden rounded-[24px] group cursor-pointer active:scale-[0.98] transition-all bg-[#0d1526] animate-up hover:border-cyan-500/30">
+                        <div class="flex h-28">
+                            <div class="w-28 h-full overflow-hidden shrink-0 relative">
+                                <img src="${r.image}" class="w-full h-full object-cover transition-all duration-700 group-hover:scale-110 opacity-80 group-hover:opacity-100">
+                                <div class="absolute inset-0 bg-gradient-to-r from-transparent to-[#0d1526]"></div>
                             </div>
-                            <div class="flex-1 p-6 flex flex-col justify-between">
-                                <div>
-                                    <div class="flex justify-between items-start">
-                                        <span class="text-[8px] font-black uppercase tracking-[0.2em] text-amber-500/70 border border-amber-500/10 px-2 py-0.5 rounded-full mb-1 inline-block">${r.cuisine}</span>
-                                        ${r.status === 'visited' ? '<i data-lucide="award" class="w-4 h-4 text-amber-400"></i>' : ''}
-                                    </div>
-                                    <h3 class="font-bold text-white text-[16px] leading-tight serif gold-gradient">${r.name}</h3>
+                            <div class="flex-1 py-4 pr-5 pl-2 flex flex-col justify-center relative">
+                                <div class="flex justify-between items-start mb-1">
+                                    <span class="text-[8px] font-black uppercase tracking-[0.1em] text-cyan-400 bg-cyan-900/30 px-2 py-0.5 rounded text-shadow-sm">${r.cuisine}</span>
+                                    ${r.status === 'visited' ? '<div class="bg-cyan-500 p-1 rounded-full"><i data-lucide="check" class="w-2 h-2 text-black font-bold"></i></div>' : ''}
                                 </div>
-                                <div class="flex items-center gap-0.5">
-                                    ${Array(5).fill(0).map((_, i) => `<i data-lucide="star" class="w-2.5 h-2.5 ${i < (r.rating || 0) ? 'fill-amber-400 text-amber-400' : 'fill-white/5 text-white/10'}"></i>`).join('')}
+                                <h3 class="font-serif italic font-bold text-white text-xl leading-none mb-1 group-hover:text-cyan-200 transition-colors">${r.name}</h3>
+                                <div class="flex items-center gap-0.5 mt-2">
+                                    ${Array(5).fill(0).map((_, i) => `<i data-lucide="star" class="w-3 h-3 ${i < (r.rating || 0) ? 'fill-cyan-400 text-cyan-400' : 'fill-white/5 text-white/10'}"></i>`).join('')}
                                 </div>
+                                <i data-lucide="chevron-right" class="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/20 group-hover:translate-x-1 transition-transform"></i>
                             </div>
                         </div>
                     </div>
@@ -305,14 +397,24 @@
         window.importWithAI = async () => {
             if (!user) return;
             const input = document.getElementById('ai-search-input');
-            const btn = document.getElementById('btn-ai-import');
-            const name = input.value;
-
-            if (name.length < 2) return showToast("Nom trop court...");
-
-            btn.innerHTML = '<div class="loader"></div>';
+            const btnMain = document.getElementById('btn-ai-import');
+            const btnRefresh = document.getElementById('btn-refresh-ai');
             
-            const prompt = `Génère une fiche de restaurant de luxe pour "${name}" à Paris. Cuisine et critique de 20 mots. JSON: { "name": "Exact", "cuisine": "Style", "note": "Texte" }`;
+            const name = input.value;
+            if (name.length < 2) return showToast("Recherche trop courte...");
+
+            // UI Loading
+            const loaderHtml = '<div class="loader"></div>';
+            btnMain.innerHTML = loaderHtml;
+            if(btnRefresh) btnRefresh.innerHTML = loaderHtml;
+            
+            // Prompt amélioré pour GMB
+            const prompt = `L'utilisateur cherche : "${name}".
+            Si l'entrée est un lien Google Maps (GMB) ou une URL, extrais le nom du restaurant et le type de cuisine.
+            Si c'est un nom, génère une liste de 3 restaurants correspondants (le premier étant le plus proche du nom, et 2 alternatives).
+            
+            Réponds UNIQUEMENT avec un JSON valide :
+            [{"name": "Nom", "cuisine": "Cuisine", "note": "Ton avis simulé (max 15 mots)"}, ...]`;
 
             try {
                 const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
@@ -326,27 +428,86 @@
                 });
                 
                 const res = await resp.json();
-                const data = JSON.parse(res.candidates[0].content.parts[0].text);
+                let data;
+                try {
+                     data = JSON.parse(res.candidates[0].content.parts[0].text);
+                } catch(e) {
+                    const temp = JSON.parse(res.candidates[0].content.parts[0].text);
+                    data = Array.isArray(temp) ? temp : [temp];
+                }
 
-                const newId = 'r_' + Date.now();
-                const resto = {
-                    name: data.name,
-                    cuisine: data.cuisine,
-                    note: data.note,
-                    status: 'wishlist',
-                    rating: 0,
-                    image: `https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?auto=format&fit=crop&w=600&q=80&sig=${Date.now()}`,
-                    createdAt: Date.now()
-                };
+                currentAiSuggestions = data;
+                renderAiChoices();
+                
+                const modal = document.getElementById('modal-ai-choice');
+                if(modal.classList.contains('hidden')) {
+                    window.toggleModal('modal-ai-choice');
+                }
 
-                await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'restaurants', newId), resto);
-                input.value = "";
-                showToast(`"${data.name}" ajouté ✨`);
             } catch (err) {
-                showToast("Erreur Cloud/IA");
+                console.error(err);
+                showToast("Erreur IA");
             } finally {
-                btn.innerHTML = '<i data-lucide="sparkles" class="w-5 h-5"></i>';
+                btnMain.innerHTML = '<i data-lucide="sparkles" class="w-4 h-4"></i>';
+                if(btnRefresh) {
+                    btnRefresh.innerHTML = `
+                        <i data-lucide="refresh-cw" class="w-4 h-4 group-hover:rotate-180 transition-transform duration-500"></i>
+                        Rafraîchir les propositions
+                    `;
+                }
                 lucide.createIcons();
+            }
+        };
+
+        window.renderAiChoices = () => {
+            const container = document.getElementById('ai-results-container');
+            container.innerHTML = currentAiSuggestions.map((item, index) => `
+                <div onclick="window.confirmAiChoice(${index})" class="glass p-5 rounded-2xl cursor-pointer hover:bg-white/10 transition-all active:scale-[0.98] border border-white/5 group relative overflow-hidden">
+                    <div class="absolute inset-0 bg-gradient-to-r from-cyan-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                    <div class="relative z-10">
+                        <div class="flex justify-between items-start mb-2">
+                            <h3 class="font-serif font-bold text-xl text-white group-hover:text-cyan-400 transition-colors">${item.name}</h3>
+                            <span class="text-[9px] font-black uppercase tracking-wider text-cyan-400 border border-cyan-500/30 bg-cyan-950/30 px-2 py-1 rounded-full">${item.cuisine}</span>
+                        </div>
+                        <p class="text-xs text-white/60 font-light leading-relaxed group-hover:text-white/80 transition-colors">${item.note}</p>
+                    </div>
+                </div>
+            `).join('');
+            lucide.createIcons();
+        }
+
+        window.confirmAiChoice = async (index) => {
+            const choice = currentAiSuggestions[index];
+            if(!choice) return;
+
+            const newId = 'r_' + Date.now();
+            const images = [
+                "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=600&q=80",
+                "https://images.unsplash.com/photo-1552566626-52f8b828add9?auto=format&fit=crop&w=600&q=80",
+                "https://images.unsplash.com/photo-1559339352-11d035aa65de?auto=format&fit=crop&w=600&q=80",
+                "https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?auto=format&fit=crop&w=600&q=80",
+                "https://images.unsplash.com/photo-1550966871-3ed3c47e2ce2?auto=format&fit=crop&w=600&q=80",
+                 "https://images.unsplash.com/photo-1551632436-cbf8dd354ca8?auto=format&fit=crop&w=600&q=80"
+            ];
+            const randomImg = images[Math.floor(Math.random() * images.length)];
+
+            const resto = {
+                name: choice.name,
+                cuisine: choice.cuisine,
+                note: choice.note, // Default AI note
+                status: 'wishlist',
+                rating: 0,
+                image: randomImg,
+                createdAt: Date.now()
+            };
+
+            try {
+                await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'restaurants', newId), resto);
+                window.toggleModal('modal-ai-choice'); 
+                document.getElementById('ai-search-input').value = "";
+                showToast(`"${choice.name}" ajouté 💎`);
+            } catch(err) {
+                showToast("Erreur sauvegarde");
             }
         };
 
@@ -359,40 +520,80 @@
             const newId = 'r_' + Date.now();
             await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'restaurants', newId), {
                 name: n,
-                cuisine: c || "Luxe",
+                cuisine: c || "Lieu secret",
                 status: 'wishlist',
                 rating: 0,
-                note: "Ajout manuel.",
-                image: "https://images.unsplash.com/photo-1559339352-11d035aa65de?auto=format&fit=crop&w=600&q=80",
+                note: "Note vide. Ajoute ton avis !",
+                image: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=600&q=80",
                 createdAt: Date.now()
             });
             
             document.getElementById('in-name').value = "";
             document.getElementById('in-cuisine').value = "";
             window.toggleModal('modal-add');
-            showToast("Enregistré");
+            showToast("Sauvegardé");
         };
 
         window.openDetails = (id) => {
             currentDetailId = id;
             const r = restaurants.find(x => x.id === id);
             if (!r) return;
+            
             document.getElementById('det-img').src = r.image;
             document.getElementById('det-name').innerText = r.name;
             document.getElementById('det-tag').innerText = r.cuisine;
-            document.getElementById('det-note').innerText = r.note;
             
+            // Editable Note
+            const noteInput = document.getElementById('det-note-input');
+            noteInput.value = r.note || "";
+            // Auto-save on blur
+            noteInput.onblur = () => window.updateNote(id, noteInput.value);
+
+            // Render Interactive Stars
+            const starContainer = document.getElementById('det-stars-interactive');
+            starContainer.innerHTML = Array(5).fill(0).map((_, i) => 
+                `<button onclick="window.setRating('${id}', ${i + 1})" class="focus:outline-none hover:scale-125 transition-transform">
+                    <i data-lucide="star" class="w-6 h-6 ${i < (r.rating || 0) ? 'fill-cyan-400 text-cyan-400' : 'fill-white/5 text-white/20 hover:text-cyan-400/50'}"></i>
+                </button>`
+            ).join('');
+            
+            lucide.createIcons();
+
             const btn = document.getElementById('det-status-btn');
             if(r.status === 'visited') {
-                btn.classList.add('bg-amber-500', 'text-black');
-                btn.classList.remove('bg-white');
-                btn.innerText = "Visité ✨";
+                btn.className = "py-4 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 text-white text-[10px] font-black uppercase tracking-widest shadow-[0_0_20px_rgba(0,243,255,0.3)]";
+                btn.innerText = "Déjà Visité ✔";
             } else {
-                btn.classList.remove('bg-amber-500', 'text-black');
-                btn.classList.add('bg-white');
+                btn.className = "py-4 rounded-xl bg-white text-black text-[10px] font-black uppercase tracking-widest hover:scale-105 transition-transform";
                 btn.innerText = "Marquer Fait";
             }
             window.toggleModal('modal-details');
+        };
+
+        window.setRating = async (id, rating) => {
+            if (!user) return;
+            const d = doc(db, 'artifacts', appId, 'public', 'data', 'restaurants', id);
+            await updateDoc(d, { rating: rating });
+            // Re-render stars locally for instant feedback (or wait for sync)
+            const r = restaurants.find(x => x.id === id);
+            if(r) r.rating = rating;
+            window.openDetails(id); // Refresh detail view
+            showToast(`Note: ${rating}/5 ⭐`);
+        };
+
+        window.updateNote = async (id, newText) => {
+            if (!user) return;
+            const statusEl = document.getElementById('save-status');
+            statusEl.innerText = "Sauvegarde...";
+            statusEl.className = "text-[8px] text-cyan-400 italic animate-pulse";
+            
+            const d = doc(db, 'artifacts', appId, 'public', 'data', 'restaurants', id);
+            await updateDoc(d, { note: newText });
+            
+            setTimeout(() => {
+                statusEl.innerText = "Enregistré";
+                statusEl.className = "text-[8px] text-white/20 italic";
+            }, 800);
         };
 
         window.toggleVisited = async () => {
@@ -400,28 +601,43 @@
             const r = restaurants.find(x => x.id === currentDetailId);
             const newS = r.status === 'visited' ? 'wishlist' : 'visited';
             const d = doc(db, 'artifacts', appId, 'public', 'data', 'restaurants', currentDetailId);
-            await updateDoc(d, { status: newS, rating: newS === 'visited' ? 5 : 0 });
+            // If marking visited, maybe suggest rating if 0?
+            const updates = { status: newS };
+            if (newS === 'visited' && (!r.rating || r.rating === 0)) {
+                updates.rating = 5; // Default to 5 if visited first time, or keep user rating
+            }
+            await updateDoc(d, updates);
             window.toggleModal('modal-details');
-            showToast(newS === 'visited' ? "Archivé" : "Wishlist");
+            showToast(newS === 'visited' ? "Archivé dans Visités" : "Retour Wishlist");
         };
 
         window.deleteRecord = async () => {
-            if(!user || !currentDetailId || !confirm("Supprimer ?")) return;
+            if(!user || !currentDetailId) return;
             await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'restaurants', currentDetailId));
             window.toggleModal('modal-details');
-            showToast("Effacé");
+            showToast("Restaurant supprimé");
         };
 
         window.toggleModal = (id) => {
-            document.getElementById(id).classList.toggle('hidden');
+            const el = document.getElementById(id);
+            if (el.classList.contains('hidden')) {
+                el.classList.remove('hidden');
+            } else {
+                el.classList.add('hidden');
+            }
         };
 
         window.setFilter = (f) => {
             filter = f;
             document.querySelectorAll('.filter-btn').forEach(btn => {
                 const isActive = btn.dataset.filter === f;
-                btn.classList.toggle('glass', isActive);
-                btn.classList.toggle('text-white/30', !isActive);
+                if(isActive) {
+                    btn.classList.remove('text-white/40', 'bg-transparent');
+                    btn.classList.add('bg-white/10', 'text-white', 'shadow-lg');
+                } else {
+                    btn.classList.add('text-white/40', 'bg-transparent');
+                    btn.classList.remove('bg-white/10', 'text-white', 'shadow-lg');
+                }
             });
             window.render();
         };
@@ -431,25 +647,43 @@
             document.getElementById('restaurants-grid').classList.toggle('hidden', !isMain);
             document.getElementById('filter-bar').classList.toggle('hidden', !isMain);
             document.getElementById('collections-view').classList.toggle('hidden', isMain);
-            document.querySelector('.px-8.mb-8').classList.toggle('hidden', !isMain);
+            document.querySelector('.px-8.mb-6').classList.toggle('hidden', !isMain);
 
-            document.getElementById('nav-main').classList.toggle('tab-active', isMain);
-            document.getElementById('nav-main').classList.toggle('opacity-40', !isMain);
-            document.getElementById('nav-collections').classList.toggle('tab-active', !isMain);
-            document.getElementById('nav-collections').classList.toggle('opacity-40', isMain);
-
-            if(!isMain) renderCollections();
+            const navMain = document.getElementById('nav-main');
+            const navCol = document.getElementById('nav-collections');
+            
+            if(isMain) {
+                navMain.classList.add('active');
+                navMain.classList.remove('text-white/30');
+                navCol.classList.remove('active');
+                navCol.classList.add('text-white/30');
+            } else {
+                navCol.classList.add('active');
+                navCol.classList.remove('text-white/30');
+                navMain.classList.remove('active');
+                navMain.classList.add('text-white/30');
+                renderCollections();
+            }
         };
 
         const renderCollections = () => {
             const grid = document.getElementById('collections-grid');
             const types = [...new Set(restaurants.map(r => r.cuisine))];
+            if(types.length === 0) {
+                 grid.innerHTML = `<div class="col-span-2 text-center text-white/20 text-xs py-10 uppercase tracking-widest">Aucune catégorie</div>`;
+                 return;
+            }
             grid.innerHTML = types.map(t => {
                 const count = restaurants.filter(r => r.cuisine === t).length;
                 return `
-                    <div class="glass p-6 rounded-[2.5rem] border border-white/5 flex flex-col items-center text-center space-y-4">
-                        <div class="p-4 bg-amber-500/10 rounded-2xl text-amber-500"><i data-lucide="folder" class="w-8 h-8"></i></div>
-                        <div><h3 class="font-bold text-[10px] gold-gradient uppercase tracking-widest">${t}</h3><p class="text-[8px] text-white/20 uppercase mt-1">${count} Adresses</p></div>
+                    <div class="glass p-5 rounded-[24px] border border-white/5 flex flex-col items-center text-center space-y-3 hover:bg-white/5 transition-colors cursor-pointer">
+                        <div class="p-3 bg-gradient-to-br from-cyan-500/20 to-blue-600/20 rounded-2xl text-cyan-400 shadow-[0_0_15px_rgba(0,243,255,0.1)]">
+                            <i data-lucide="folder" class="w-6 h-6"></i>
+                        </div>
+                        <div>
+                            <h3 class="font-bold text-[10px] text-white uppercase tracking-widest mb-1">${t}</h3>
+                            <p class="text-[8px] text-cyan-400/60 uppercase font-bold">${count} Lieux</p>
+                        </div>
                     </div>
                 `;
             }).join('');
@@ -458,14 +692,18 @@
 
         const showToast = (msg) => {
             const t = document.getElementById('toast');
-            t.innerText = msg;
+            document.getElementById('toast-msg').innerText = msg;
+            t.classList.remove('opacity-0', '-translate-y-10');
             t.classList.add('opacity-100', 'translate-y-0');
-            setTimeout(() => t.classList.remove('opacity-100', 'translate-y-0'), 3000);
+            setTimeout(() => {
+                t.classList.add('opacity-0', '-translate-y-10');
+                t.classList.remove('opacity-100', 'translate-y-0');
+            }, 2500);
         };
 
         document.getElementById('ai-search-input').addEventListener('input', window.render);
         
-        // Démarrage
+        // Start
         initCloud();
     </script>
 </body>
